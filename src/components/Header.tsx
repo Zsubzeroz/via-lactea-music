@@ -22,12 +22,12 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Main Brand & Action Row */}
       <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-md bg-[#ff0055]/15 border border-[#ff0055]/40 flex items-center justify-center text-[#ff0055] shrink-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-md bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 shrink-0">
             <Radio className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="min-w-0">
             <h1 className="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-1 truncate">
-              VIA LÁCTEA <span className="text-[#ff0055]">MUSIC</span>
+              VIA LÁCTEA <span className="text-zinc-400">MUSIC</span>
             </h1>
             <p className="text-[10px] sm:text-xs text-zinc-400 font-mono truncate">
               {isPlaying ? `Tocando: ${activeTrackTitle}` : 'Player de Música'}
@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={onOpenUpload}
           className="px-2.5 sm:px-3 py-1.5 rounded-md border border-zinc-700 bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 text-xs font-medium flex items-center gap-1.5 transition-colors shrink-0"
         >
-          <Upload className="w-3.5 h-3.5 text-[#ff0055]" />
+          <Upload className="w-3.5 h-3.5 text-zinc-400" />
           <span className="hidden xs:inline">Adicionar</span>
           <span>Áudio</span>
         </button>
@@ -51,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={() => setActiveTab('player')}
           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
             activeTab === 'player'
-              ? 'bg-[#ff0055] text-white'
+              ? 'bg-zinc-700 text-white'
               : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
           }`}
         >
@@ -63,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={() => setActiveTab('library')}
           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
             activeTab === 'library'
-              ? 'bg-[#ff0055] text-white'
+              ? 'bg-zinc-700 text-white'
               : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
           }`}
         >
@@ -75,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={() => setActiveTab('equalizer')}
           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
             activeTab === 'equalizer'
-              ? 'bg-[#ff0055] text-white'
+              ? 'bg-zinc-700 text-white'
               : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
           }`}
         >

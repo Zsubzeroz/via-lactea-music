@@ -44,21 +44,4 @@ export interface EQPreset {
   gains: number[]; // 10 bands
 }
 
-export interface GitCommit {
-  hash: string;
-  shortHash: string;
-  message: string;
-  author: string;
-  date: string;
-  tag?: string;
-}
-
-export interface GitFile {
-  path: string;
-  type: 'file' | 'dir';
-  size?: string;
-  language?: string;
-  content?: string;
-}
-
 export type ActiveTab = 'player' | 'library' | 'equalizer';

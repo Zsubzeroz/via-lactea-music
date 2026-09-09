@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Track } from '../types';
 import { PLAYLIST_CATEGORIES } from '../data/mockTracks';
 import { 
@@ -13,7 +13,8 @@ import {
   Music, 
   CheckCircle2, 
   Disc,
-  ArrowUpDown
+  ArrowUpDown,
+  SearchX
 } from 'lucide-react';
 
 interface LibraryViewProps {
@@ -36,6 +37,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'title' | 'artist' | 'duration' | 'bpm'>('title');
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to top when category or search changes
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [selectedCategory, searchQuery, sortBy]);
 
   const filteredTracks = tracks.filter((track) => {
     const matchesCategory = selectedCategory === 'all' || track.category.toLowerCase().includes(selectedCategory.toLowerCase());
@@ -67,7 +74,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       <div className="bg-[#111113] border border-zinc-800 rounded-lg p-4">
         <div className="flex items-center justify-between pb-3 border-b border-zinc-800 mb-3 text-xs font-mono text-zinc-400">
           <span className="font-semibold text-zinc-200 flex items-center gap-1.5">
-            <HardDrive className="w-3.5 h-3.5 text-[#ff0055]" />
+            <HardDrive className="w-3.5 h-3.5 text-zinc-400" />
             PASTAS SINCRONIZADAS DO REDMI 15C [495 FAIXAS]
           </span>
           <span>Armazenamento: ~3.9 GB em Documents/Musica/</span>
@@ -78,7 +85,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             onClick={() => setSelectedCategory('all')}
             className={`p-2.5 rounded border text-left flex flex-col justify-between transition-all ${
               selectedCategory === 'all'
-                ? 'border-[#ff0055] bg-[#ff0055]/10 text-white'
+                ? 'border-zinc-500 bg-zinc-700/50 text-white'
                 : 'border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200'
             }`}
           >
@@ -100,7 +107,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 onClick={() => setSelectedCategory(cat.name.split(' ')[0])}
                 className={`p-2.5 rounded border text-left flex flex-col justify-between transition-all ${
                   isSelected
-                    ? 'border-[#ff0055] bg-[#ff0055]/10 text-white'
+                    ? 'border-zinc-500 bg-zinc-700/50 text-white'
                     : 'border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200'
                 }`}
               >
@@ -124,7 +131,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             placeholder="Buscar por título, artista, álbum ou gênero..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#0a0a0c] border border-zinc-800 rounded px-3 py-2 sm:py-1.5 pl-9 text-xs font-mono text-zinc-200 focus:outline-none focus:border-[#ff0055] placeholder-zinc-600"
+            className="w-full bg-[#0a0a0c] border border-zinc-800 rounded px-3 py-2 sm:py-1.5 pl-9 text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500 placeholder-zinc-600"
           />
         </div>
 
@@ -136,7 +143,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-[#0a0a0c] border border-zinc-800 rounded px-2.5 py-1.5 text-zinc-300 text-xs focus:outline-none focus:border-[#ff0055]"
+              className="bg-[#0a0a0c] border border-zinc-800 rounded px-2.5 py-1.5 text-zinc-300 text-xs focus:outline-none focus:border-zinc-500"
             >
               <option value="title">Título</option>
               <option value="artist">Artista</option>
@@ -152,7 +159,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       </div>
 
       {/* Track List */}
-      <div className="bg-[#111113] border border-zinc-800 rounded-lg overflow-hidden">
+      <div ref={listRef} className="bg-[#111113] border border-zinc-800 rounded-lg overflow-hidden">
         {/* Desktop Header */}
         <div className="hidden sm:grid grid-cols-12 px-4 py-2.5 bg-[#0a0a0c] border-b border-zinc-800 text-[11px] font-mono text-zinc-500 uppercase tracking-wider">
           <div className="col-span-5 sm:col-span-4">Obra / Artista</div>
@@ -168,7 +175,14 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
         </div>
 
         <div className="divide-y divide-zinc-800/60">
-          {filteredTracks.map((track) => {
+          {filteredTracks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <SearchX className="w-10 h-10 text-zinc-600" />
+              <p className="text-sm font-mono text-zinc-400">Nenhuma faixa encontrada</p>
+              <p className="text-xs text-zinc-500">Tente ajustar a busca ou trocar de categoria</p>
+            </div>
+          ) : (
+          filteredTracks.map((track) => {
             const isCurrent = currentTrack?.id === track.id;
 
             return (
@@ -316,7 +330,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 </div>
               </div>
             );
-          })}
+          })
+          )}
         </div>
       </div>
     </div>

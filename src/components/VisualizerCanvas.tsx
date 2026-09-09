@@ -31,6 +31,8 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    let idleTime = 0;
+
     const handleResize = () => {
       if (containerRef.current && canvas) {
         canvas.width = containerRef.current.clientWidth;
@@ -49,11 +51,11 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
       const width = canvas.width;
       const height = canvas.height;
 
-      // Clear with dark precision canvas background
+      // Clear
       ctx.fillStyle = '#0a0a0c';
       ctx.fillRect(0, 0, width, height);
 
-      // Draw technical grid lines
+      // Grid lines
       ctx.strokeStyle = '#18181b';
       ctx.lineWidth = 1;
       const gridRows = 6;
@@ -65,7 +67,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
         ctx.stroke();
       }
 
-      // Calculate RMS for VU meters
+      // VU meters
       let sumSquares = 0;
       for (let i = 0; i < time.length; i++) {
         const val = (time[i] - 128) / 128;
@@ -76,7 +78,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
       const rightLevel = isPlaying ? Math.min(100, Math.round(rms * 145 + Math.random() * 5)) : 0;
       setVuLevels({ left: leftLevel, right: rightLevel });
 
-      // Draw FFT Bars
+      // FFT Bars
       if (visualMode === 'bars' || visualMode === 'hybrid') {
         const numBars = 48;
         const barSpacing = 3;
@@ -85,44 +87,70 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
 
         for (let i = 0; i < numBars; i++) {
           const dataIndex = Math.floor((i / numBars) * (freq.length * 0.7));
-          const value = isPlaying ? freq[dataIndex] : 2;
-          const barHeight = Math.max(3, (value / 255) * (height - 30));
+          let value: number;
+          let barHeight: number;
+
+          if (isPlaying) {
+            value = freq[dataIndex];
+            barHeight = Math.max(3, (value / 255) * (height - 30));
+          } else {
+            // Idle animation: subtle sine wave oscillation
+            idleTime += 0.015;
+            const phase = (i / numBars) * Math.PI * 4;
+            const idleAmp = 8 + Math.sin(idleTime * 0.8) * 4;
+            const noise = Math.sin(idleTime * 2.3 + phase) * 3;
+            barHeight = Math.max(3, idleAmp + noise);
+            value = 0;
+          }
+
           const x = 12 + i * (barWidth + barSpacing);
           const y = height - barHeight - 18;
 
-          // Decay peak line
+          // Peak decay
           if (barHeight > peaksRef.current[i]) {
             peaksRef.current[i] = barHeight;
           } else {
             peaksRef.current[i] = Math.max(2, peaksRef.current[i] - 1.2);
           }
 
-          // Bar gradient / style
-          const isHighEnergy = value > 190;
-          ctx.fillStyle = isHighEnergy ? '#ff0055' : '#27272a';
-          if (isPlaying && value > 60) {
-            ctx.fillStyle = i % 4 === 0 ? '#ff0055' : '#3f3f46';
+          // Bar color
+          if (isPlaying) {
+            const isHighEnergy = value > 190;
+            ctx.fillStyle = isHighEnergy ? '#ff0055' : '#27272a';
+            if (value > 60) {
+              ctx.fillStyle = i % 4 === 0 ? '#ff0055' : '#3f3f46';
+            }
+          } else {
+            // Idle: dim zinc with subtle pulse
+            const idleAlpha = 0.3 + Math.sin(idleTime + i * 0.2) * 0.15;
+            ctx.fillStyle = `rgba(63, 63, 70, ${idleAlpha})`;
           }
           ctx.fillRect(x, y, barWidth, barHeight);
 
-          // Peak indicator dot
+          // Peak dot
           const peakY = height - peaksRef.current[i] - 18;
-          ctx.fillStyle = '#00ff88';
+          ctx.fillStyle = isPlaying ? '#00ff88' : '#3f3f46';
           ctx.fillRect(x, Math.max(6, peakY - 2), barWidth, 2);
         }
       }
 
-      // Draw Oscilloscope Waveform Line
+      // Oscilloscope
       if (visualMode === 'oscilloscope' || visualMode === 'hybrid') {
         ctx.lineWidth = visualMode === 'hybrid' ? 1.5 : 2;
-        ctx.strokeStyle = '#ff0055';
+        ctx.strokeStyle = isPlaying ? '#ff0055' : '#3f3f46';
         ctx.beginPath();
 
         const sliceWidth = width / time.length;
         let x = 0;
 
         for (let i = 0; i < time.length; i++) {
-          const v = time[i] / 128.0;
+          let v: number;
+          if (isPlaying) {
+            v = time[i] / 128.0;
+          } else {
+            // Idle: gentle sine flatline with noise
+            v = 1.0 + Math.sin(idleTime * 1.5 + i * 0.05) * 0.02 + (Math.random() - 0.5) * 0.005;
+          }
           const y = (v * (height / 2)) - (visualMode === 'hybrid' ? 10 : 0);
 
           if (i === 0) {
@@ -137,7 +165,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
         ctx.stroke();
       }
 
-      // Frequency baseline axis markers
+      // Frequency markers
       ctx.fillStyle = '#71717a';
       ctx.font = '10px JetBrains Mono, monospace';
       const markers = ['32Hz', '64Hz', '125Hz', '250Hz', '500Hz', '1kHz', '2kHz', '4kHz', '8kHz', '16kHz'];
@@ -164,12 +192,12 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
       {/* Top Header of Visualizer */}
       <div className="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-zinc-800/80">
         <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-[#ff0055]" />
+          <Activity className="w-4 h-4 text-zinc-400" />
           <span className="text-xs font-mono font-semibold tracking-wider text-zinc-200">
             ESPECTRO DE FREQUÊNCIA FFT EM TEMPO REAL
           </span>
           <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${isPlaying ? 'bg-emerald-950 text-[#00ff88] border border-emerald-800' : 'bg-zinc-800 text-zinc-400'}`}>
-            {isPlaying ? 'ACTIVE 48kHz' : 'MUTED'}
+            {isPlaying ? 'ACTIVE 48kHz' : 'IDLE'}
           </span>
         </div>
 
@@ -178,7 +206,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
           <button
             onClick={() => setVisualMode('hybrid')}
             className={`px-2 py-0.5 rounded transition-colors ${
-              visualMode === 'hybrid' ? 'bg-[#ff0055] text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'
+              visualMode === 'hybrid' ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'
             }`}
           >
             Híbrido
@@ -186,7 +214,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
           <button
             onClick={() => setVisualMode('bars')}
             className={`px-2 py-0.5 rounded transition-colors ${
-              visualMode === 'bars' ? 'bg-[#ff0055] text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'
+              visualMode === 'bars' ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'
             }`}
           >
             Barras FFT
@@ -194,7 +222,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
           <button
             onClick={() => setVisualMode('oscilloscope')}
             className={`px-2 py-0.5 rounded transition-colors ${
-              visualMode === 'oscilloscope' ? 'bg-[#ff0055] text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'
+              visualMode === 'oscilloscope' ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'
             }`}
           >
             Osciloscópio

@@ -121,7 +121,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
       <div className="bg-[#111113] border border-zinc-800 rounded-lg p-6 max-w-lg w-full flex flex-col gap-4 relative shadow-2xl">
         <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
           <div className="flex items-center gap-2">
-            <Upload className="w-4 h-4 text-[#ff0055]" />
+            <Upload className="w-4 h-4 text-zinc-400" />
             <h3 className="text-sm font-bold text-white tracking-tight">
               IMPORTAR ÁUDIO — VIA LÁCTEA
             </h3>
@@ -141,7 +141,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
           <select
             value={trackCategory}
             onChange={(e) => setTrackCategory(e.target.value)}
-            className="w-full bg-[#0a0a0c] border border-zinc-800 rounded p-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-[#ff0055]"
+            className="w-full bg-[#0a0a0c] border border-zinc-800 rounded p-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500"
           >
             <option value="Piano">Piano / Clássico</option>
             <option value="Rap Nacional">Rap Nacional</option>
@@ -156,7 +156,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
         {converting && (
           <div className="bg-[#0a0a0c] border border-zinc-800 rounded-lg p-4 flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 text-[#ff0055] animate-spin" />
+              <Loader2 className="w-4 h-4 text-zinc-400 animate-spin" />
               <span className="text-xs font-mono text-zinc-200">
                 Convertendo {selectedFile?.name}...
               </span>
@@ -221,13 +221,13 @@ export const UploadModal: React.FC<UploadModalProps> = ({
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors flex flex-col items-center justify-center gap-2 ${
               dragOver
-                ? 'border-[#ff0055] bg-[#ff0055]/10'
+                ? 'border-zinc-500 bg-zinc-800/50'
                 : 'border-zinc-800 bg-[#0a0a0c] hover:border-zinc-700'
             }`}
           >
-            <FileAudio className={`w-10 h-10 ${dragOver ? 'text-[#ff0055]' : 'text-zinc-500'}`} />
+            <FileAudio className={`w-10 h-10 ${dragOver ? 'text-zinc-300' : 'text-zinc-500'}`} />
             <p className="text-xs font-mono text-zinc-200">
-              Arraste um MP3 ou <span className="text-[#ff0055] underline">clique para selecionar</span>
+              Arraste um MP3 ou <span className="text-zinc-300 underline">clique para selecionar</span>
             </p>
             <p className="text-[10px] font-mono text-zinc-500">
               Conversão automática: MP3 → Ogg Vorbis + AAC

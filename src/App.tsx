@@ -230,7 +230,7 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto max-h-80 space-y-1">
+                <div className="flex-1 overflow-y-auto max-h-80 space-y-1 relative">
                   {tracks.slice(0, 8).map((t, idx) => {
                     const isSelected = t.id === currentTrack.id;
                     return (
@@ -254,6 +254,9 @@ export default function App() {
                       </button>
                     );
                   })}
+                  {tracks.length > 8 && (
+                    <div className="sticky bottom-0 left-0 right-0 h-10 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent, #111113)' }} />
+                  )}
                 </div>
               </div>
             </div>
