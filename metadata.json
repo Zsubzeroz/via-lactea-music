@@ -1,0 +1,6 @@
+{
+  "name": "Via Láctea Music",
+  "description": "Protótipo interativo de alta fidelidade e central do repositório GitHub para o player de música Via Láctea Music com equalizador paramétrico, síntese de áudio e sincronização.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
