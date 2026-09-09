@@ -203,14 +203,14 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
       </div>
 
       {/* Main Canvas Container */}
-      <div ref={containerRef} className="w-full h-44 relative overflow-hidden rounded bg-[#0a0a0c] border border-zinc-800">
+      <div ref={containerRef} className="w-full h-36 sm:h-44 relative overflow-hidden rounded bg-[#0a0a0c] border border-zinc-800">
         <canvas ref={canvasRef} className="w-full h-full block" />
       </div>
 
       {/* Telemetry & VU Meters Footer */}
-      <div className="mt-2.5 pt-2 border-t border-zinc-800/80 grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] font-mono">
+      <div className="mt-2.5 pt-2 border-t border-zinc-800/80 grid grid-cols-1 lg:grid-cols-3 gap-2.5 text-[11px] font-mono">
         {/* Hardware & Format stats */}
-        <div className="flex items-center gap-3 text-zinc-400">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-zinc-400 text-[10px] sm:text-[11px]">
           <div>
             <span className="text-zinc-500">FORMATO: </span>
             <span className="text-zinc-200 font-bold">{format}</span>
@@ -230,7 +230,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
         </div>
 
         {/* Dual Channel VU Meter (L / R) */}
-        <div className="flex flex-col gap-1 justify-center md:col-span-2">
+        <div className="flex flex-col gap-1 justify-center lg:col-span-2">
           <div className="flex items-center gap-2">
             <span className="text-zinc-400 w-4 text-[10px]">CH-L</span>
             <div className="flex-1 h-2 bg-zinc-800 rounded-sm overflow-hidden flex">

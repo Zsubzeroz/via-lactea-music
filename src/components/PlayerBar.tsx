@@ -82,12 +82,12 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
 
   return (
-    <div className="border-t border-zinc-800 bg-[#0c0c0e] px-4 py-3 sticky bottom-0 z-40">
+    <div className="border-t border-zinc-800 bg-[#0c0c0e] px-3 sm:px-4 py-2 sm:py-3 sticky bottom-0 z-40 shadow-2xl backdrop-blur-md">
       {/* Waveform Scrubber Line */}
       <div 
         id="scrubber-bar"
         onClick={handleProgressBarClick}
-        className="w-full h-3 -mt-3 mb-1.5 cursor-pointer group flex items-center"
+        className="w-full h-3 -mt-2 sm:-mt-3 mb-1.5 cursor-pointer group flex items-center"
       >
         <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden relative group-hover:h-2 transition-all">
           <div 
@@ -99,9 +99,76 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* MOBILE COMPACT PLAYER (< 640px) */}
+      <div className="flex sm:hidden items-center justify-between gap-2">
+        {/* Track Info (Click opens Equalizer or shows info) */}
+        <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
+          <div className="w-9 h-9 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0 relative">
+            <FileAudio className={`w-5 h-5 ${isPlaying ? 'text-[#ff0055]' : 'text-zinc-500'}`} />
+            {isPlaying && (
+              <span className="absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[#00ff88]" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-zinc-100 truncate">
+              {currentTrack ? currentTrack.title : 'Nenhuma faixa'}
+            </p>
+            <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-mono truncate">
+              <span className="truncate">{currentTrack?.artist || 'Selecione uma faixa'}</span>
+              {currentTrack && (
+                <>
+                  <span className="text-zinc-600">•</span>
+                  <span className="text-[#00ff88] shrink-0 font-bold">{currentTrack.format}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Action Controls */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            id="btn-mobile-eq"
+            onClick={onOpenEqualizer}
+            className="w-9 h-9 rounded flex items-center justify-center text-zinc-400 hover:text-white active:bg-zinc-800 transition-colors"
+            title="Equalizador"
+          >
+            <Sliders className="w-4 h-4 text-[#ff0055]" />
+          </button>
+
+          <button
+            id="btn-mobile-prev"
+            onClick={onPrevious}
+            className="w-9 h-9 rounded flex items-center justify-center text-zinc-300 active:bg-zinc-800 transition-colors"
+            title="Anterior"
+          >
+            <SkipBack className="w-4 h-4" />
+          </button>
+
+          <button
+            id="btn-mobile-play"
+            onClick={onPlayPause}
+            className="w-10 h-10 rounded-full bg-[#ff0055] active:bg-[#ff0055]/80 text-white flex items-center justify-center transition-transform active:scale-95 shadow-md shrink-0"
+            title={isPlaying ? 'Pausar' : 'Tocar'}
+          >
+            {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+          </button>
+
+          <button
+            id="btn-mobile-next"
+            onClick={onNext}
+            className="w-9 h-9 rounded flex items-center justify-center text-zinc-300 active:bg-zinc-800 transition-colors"
+            title="Próxima"
+          >
+            <SkipForward className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* DESKTOP AUDIOPHILE PLAYER (>= 640px) */}
+      <div className="hidden sm:flex items-center justify-between gap-4">
         {/* Track Metadata (Left) */}
-        <div className="flex items-center gap-3 min-w-[240px] max-w-sm">
+        <div className="flex items-center gap-3 min-w-[220px] max-w-sm">
           <div className="w-11 h-11 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center relative overflow-hidden shrink-0">
             <FileAudio className={`w-6 h-6 ${isPlaying ? 'text-[#ff0055]' : 'text-zinc-500'}`} />
             {isPlaying && (

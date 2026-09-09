@@ -162,43 +162,52 @@ export const EqualizerModal: React.FC<EqualizerViewProps> = ({ onClose }) => {
         </div>
       </div>
 
-      {/* 10 Vertical Sliders */}
-      <div className="bg-[#0a0a0c] border border-zinc-800 rounded p-4">
-        <div className="grid grid-cols-10 gap-2 items-end justify-items-center h-52 pb-2">
-          {EQ_FREQUENCIES.map((freq, index) => {
-            const gain = currentGains[index];
-            const label = freq >= 1000 ? `${freq / 1000}k` : `${freq}`;
+      {/* 10 Vertical Sliders with Mobile-friendly touch scrolling */}
+      <div className="bg-[#0a0a0c] border border-zinc-800 rounded p-3 sm:p-4">
+        <div className="flex sm:hidden items-center justify-between text-[11px] font-mono text-zinc-400 mb-3 pb-1 border-b border-zinc-800/60">
+          <span className="flex items-center gap-1 text-zinc-300">
+            <Sliders className="w-3 h-3 text-[#ff0055]" /> 10 Bandas Paramétricas
+          </span>
+          <span className="text-zinc-500 text-[10px]">Deslize horizontalmente ➔</span>
+        </div>
 
-            return (
-              <div key={freq} className="flex flex-col items-center h-full justify-between w-full">
-                {/* dB Readout */}
-                <span className={`text-[10px] font-mono ${gain > 0 ? 'text-[#ff0055]' : gain < 0 ? 'text-sky-400' : 'text-zinc-500'}`}>
-                  {gain > 0 ? `+${gain.toFixed(1)}` : gain.toFixed(1)}
-                </span>
+        <div className="overflow-x-auto scrollbar-thin pb-2 touch-pan-x -mx-1 px-1">
+          <div className="min-w-[560px] sm:min-w-0 grid grid-cols-10 gap-2 items-end justify-items-center h-52 pb-2">
+            {EQ_FREQUENCIES.map((freq, index) => {
+              const gain = currentGains[index];
+              const label = freq >= 1000 ? `${freq / 1000}k` : `${freq}`;
 
-                {/* Slider */}
-                <div className="relative h-36 flex items-center justify-center">
-                  {/* Center zero line marker */}
-                  <div className="absolute w-4 h-0.5 bg-zinc-700 pointer-events-none" />
-                  
-                  <input
-                    type="range"
-                    min="-12"
-                    max="12"
-                    step="0.5"
-                    value={gain}
-                    onChange={(e) => handleGainChange(index, parseFloat(e.target.value))}
-                    className="h-32 -rotate-90 appearance-none bg-zinc-800 rounded cursor-pointer accent-[#ff0055] w-32"
-                  />
+              return (
+                <div key={freq} className="flex flex-col items-center h-full justify-between w-full min-w-[48px]">
+                  {/* dB Readout */}
+                  <span className={`text-[10px] font-mono font-bold ${gain > 0 ? 'text-[#ff0055]' : gain < 0 ? 'text-sky-400' : 'text-zinc-500'}`}>
+                    {gain > 0 ? `+${gain.toFixed(1)}` : gain.toFixed(1)}
+                  </span>
+
+                  {/* Slider */}
+                  <div className="relative h-36 flex items-center justify-center">
+                    {/* Center zero line marker */}
+                    <div className="absolute w-5 h-0.5 bg-zinc-700 pointer-events-none" />
+                    
+                    <input
+                      type="range"
+                      min="-12"
+                      max="12"
+                      step="0.5"
+                      value={gain}
+                      onChange={(e) => handleGainChange(index, parseFloat(e.target.value))}
+                      className="h-32 -rotate-90 appearance-none bg-zinc-800 rounded cursor-pointer accent-[#ff0055] w-32 touch-none"
+                    />
+                  </div>
+
+                  {/* Frequency Band Label */}
+                  <span className="text-[11px] font-mono font-medium text-zinc-300 mt-1">
+                    {label}
+                  </span>
                 </div>
-
-                {/* Frequency Band Label */}
-                <span className="text-[11px] font-mono font-medium text-zinc-300 mt-1">
-                  {label}
-                </span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

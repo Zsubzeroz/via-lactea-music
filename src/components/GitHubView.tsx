@@ -118,18 +118,18 @@ export const GitHubView: React.FC<GitHubViewProps> = ({ onNotify }) => {
         </div>
 
         {/* Quick Clone Bar */}
-        <div className="mt-4 pt-4 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-3 bg-[#0a0a0c] p-3 rounded border border-zinc-800/80">
-          <div className="flex items-center gap-2 font-mono text-xs text-zinc-300 truncate">
+        <div className="mt-4 pt-4 border-t border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0a0a0c] p-3 rounded border border-zinc-800/80">
+          <div className="flex items-center gap-2 font-mono text-xs text-zinc-300 min-w-0 flex-1 truncate">
             <Terminal className="w-4 h-4 text-[#00ff88] shrink-0" />
             <span className="text-zinc-500">$</span>
-            <span className="text-zinc-200 select-all truncate">
+            <span className="text-zinc-200 select-all truncate text-[11px] sm:text-xs">
               git clone https://github.com/Zsubzeroz/via-lactea-music.git
             </span>
           </div>
 
           <button
             onClick={() => copyToClipboard('git clone https://github.com/Zsubzeroz/via-lactea-music.git', 'clone')}
-            className="px-3 py-1 rounded bg-[#ff0055] hover:bg-[#ff0055]/90 text-white text-xs font-mono flex items-center gap-1.5 shrink-0 transition-colors"
+            className="px-3 py-1.5 rounded bg-[#ff0055] hover:bg-[#ff0055]/90 text-white text-xs font-mono flex items-center justify-center gap-1.5 shrink-0 transition-colors self-start sm:self-auto"
           >
             {copiedCmd === 'clone' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             {copiedCmd === 'clone' ? 'Copiado!' : 'Copiar Git Clone'}
@@ -137,46 +137,46 @@ export const GitHubView: React.FC<GitHubViewProps> = ({ onNotify }) => {
         </div>
       </div>
 
-      {/* Navigation Subtabs */}
-      <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 text-xs font-mono">
+      {/* Navigation Subtabs with Mobile Scroll */}
+      <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 text-xs font-mono overflow-x-auto scrollbar-none whitespace-nowrap touch-pan-x">
         <button
           onClick={() => setActiveTab('readme')}
-          className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 shrink-0 ${
             activeTab === 'readme' ? 'bg-zinc-800 text-white font-semibold' : 'text-zinc-400 hover:text-white'
           }`}
         >
           <FileText className="w-3.5 h-3.5" />
-          README.md (Documentação)
+          README.md
         </button>
 
         <button
           onClick={() => setActiveTab('code')}
-          className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 shrink-0 ${
             activeTab === 'code' ? 'bg-zinc-800 text-white font-semibold' : 'text-zinc-400 hover:text-white'
           }`}
         >
           <Code2 className="w-3.5 h-3.5 text-[#00ff88]" />
-          Explorador de Arquivos do Repositório
+          Arquivos do Repositório
         </button>
 
         <button
           onClick={() => setActiveTab('architecture')}
-          className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 shrink-0 ${
             activeTab === 'architecture' ? 'bg-zinc-800 text-white font-semibold' : 'text-zinc-400 hover:text-white'
           }`}
         >
           <Layers className="w-3.5 h-3.5 text-[#ff0055]" />
-          Arquitetura Cloudflare R2 + Firestore
+          Arquitetura R2 + Firestore
         </button>
 
         <button
           onClick={() => setActiveTab('commits')}
-          className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 shrink-0 ${
             activeTab === 'commits' ? 'bg-zinc-800 text-white font-semibold' : 'text-zinc-400 hover:text-white'
           }`}
         >
           <GitCommit className="w-3.5 h-3.5 text-amber-400" />
-          Histórico de Commits ({COMMITS.length})
+          Commits ({COMMITS.length})
         </button>
       </div>
 

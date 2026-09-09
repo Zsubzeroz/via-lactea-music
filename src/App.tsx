@@ -162,10 +162,10 @@ export default function App() {
         activeTrackTitle={currentTrack.title}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
+      {/* Main Content Area with mobile safe padding */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 md:p-6 pb-24 sm:pb-20 flex flex-col gap-4 sm:gap-6">
         {activeTab === 'player' && (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 sm:gap-6">
             {/* Upper: Live Spectrum FFT & Oscilloscope */}
             <VisualizerCanvas
               isPlaying={isPlaying}
@@ -176,9 +176,9 @@ export default function App() {
             />
 
             {/* Lower: Showcase Active Track & Queue Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* Active Track Highlight Details */}
-              <div className="lg:col-span-2 bg-[#111113] border border-zinc-800 rounded-lg p-5 flex flex-col justify-between gap-5">
+              <div className="lg:col-span-2 bg-[#111113] border border-zinc-800 rounded-lg p-3.5 sm:p-5 flex flex-col justify-between gap-4 sm:gap-5">
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-zinc-800 mb-4">
                     <div className="flex items-center gap-2">
@@ -198,12 +198,12 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-5 items-start">
+                  <div className="flex flex-col xs:flex-row gap-4 sm:gap-5 items-center xs:items-start text-center xs:text-left">
                     {/* Vinyl / Cover disc simulation */}
-                    <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-lg bg-[#0a0a0c] border border-zinc-800 flex items-center justify-center relative overflow-hidden shrink-0 group">
-                      <Disc className={`w-16 h-16 text-zinc-600 transition-transform duration-1000 ${isPlaying ? 'rotate-[360deg] text-[#ff0055]' : ''}`} />
+                    <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-lg bg-[#0a0a0c] border border-zinc-800 flex items-center justify-center relative overflow-hidden shrink-0 group shadow-md">
+                      <Disc className={`w-14 h-14 sm:w-16 sm:h-16 text-zinc-600 transition-transform duration-1000 ${isPlaying ? 'rotate-[360deg] text-[#ff0055]' : ''}`} />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
-                      <span className="absolute bottom-2 left-2 text-[10px] font-mono text-zinc-400">
+                      <span className="absolute bottom-1.5 left-1.5 text-[9px] sm:text-[10px] font-mono text-zinc-400">
                         {currentTrack.format}
                       </span>
                     </div>
@@ -213,7 +213,7 @@ export default function App() {
                       <span className="text-xs font-mono text-[#ff0055] font-semibold">
                         {currentTrack.category.toUpperCase()}
                       </span>
-                      <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate mt-0.5">
+                      <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight truncate mt-0.5">
                         {currentTrack.title}
                       </h2>
                       <p className="text-sm text-zinc-300 font-medium truncate mt-0.5">
@@ -224,7 +224,7 @@ export default function App() {
                       </p>
 
                       {/* Technical Spec pills */}
-                      <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-mono">
+                      <div className="mt-3 flex flex-wrap justify-center xs:justify-start gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-mono">
                         <span className="px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300">
                           {currentTrack.sampleRate}
                         </span>
@@ -243,33 +243,33 @@ export default function App() {
                 </div>
 
                 {/* Local Path & Lyrics Preview */}
-                <div className="pt-4 border-t border-zinc-800 space-y-3">
-                  <div className="p-2.5 rounded bg-[#0a0a0c] border border-zinc-800 text-[11px] font-mono flex items-center justify-between gap-2 text-zinc-400">
+                <div className="pt-3 sm:pt-4 border-t border-zinc-800 space-y-2.5 sm:space-y-3">
+                  <div className="p-2 sm:p-2.5 rounded bg-[#0a0a0c] border border-zinc-800 text-[10px] sm:text-[11px] font-mono flex items-center justify-between gap-2 text-zinc-400">
                     <span className="truncate">
-                      <strong className="text-zinc-500">Caminho Local: </strong>
+                      <strong className="text-zinc-500">Local: </strong>
                       {currentTrack.localPath}
                     </span>
                     <span className="text-zinc-500 shrink-0">{currentTrack.sizeMB} MB</span>
                   </div>
 
                   {currentTrack.lyrics && (
-                    <div className="p-3 rounded bg-[#0a0a0c] border border-zinc-800 text-xs font-mono text-zinc-300">
+                    <div className="p-2.5 sm:p-3 rounded bg-[#0a0a0c] border border-zinc-800 text-xs font-mono text-zinc-300">
                       <span className="text-[10px] text-zinc-500 block mb-1">LINHA POÉTICA / CONTEXTO:</span>
                       <p className="italic text-zinc-300">{currentTrack.lyrics}</p>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between text-xs font-mono pt-1">
+                  <div className="flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-2 text-xs font-mono pt-1">
                     <button
                       onClick={() => setActiveTab('ai-harmony')}
-                      className="text-[#ff0055] hover:underline flex items-center gap-1"
+                      className="text-[#ff0055] hover:underline flex items-center gap-1 justify-center xs:justify-start"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      Ver análise acústica e harmonia completa desta faixa
+                      Análise harmônica completa
                     </button>
                     <button
                       onClick={() => setActiveTab('equalizer')}
-                      className="text-zinc-400 hover:text-white flex items-center gap-1"
+                      className="text-zinc-400 hover:text-white flex items-center gap-1 justify-center xs:justify-start"
                     >
                       <Sliders className="w-3.5 h-3.5" />
                       Ajustar EQ 10-Bandas
