@@ -1,4 +1,4 @@
-export type AudioFormat = 'FLAC' | 'MP3' | 'WAV' | 'SYNTH';
+export type AudioFormat = 'FLAC' | 'MP3' | 'WAV' | 'SYNTH' | 'OGG' | 'AAC';
 
 export interface Track {
   id: string;

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
+import { initFirebaseAdmin, generateSignedUrl, uploadToStorage } from './src/services/firebaseAdmin';
 
 dotenv.config();
 
@@ -11,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -37,12 +38,21 @@ function getGenAI(): GoogleGenAI {
 
 // Health check
 app.get('/api/health', (req, res) => {
+  let firebaseOk = false;
+  try {
+    initFirebaseAdmin();
+    firebaseOk = true;
+  } catch (e: any) {
+    firebaseOk = false;
+  }
+
   res.json({
     status: 'ok',
     service: 'via-lactea-music-server',
     version: '0.1.0-alpha',
     timestamp: new Date().toISOString(),
     geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+    firebaseConfigured: firebaseOk,
   });
 });
 
@@ -188,6 +198,40 @@ app.post('/api/gemini/generate-lyrics', async (req, res) => {
   } catch (err: any) {
     console.error('Error generating lyrics:', err);
     res.status(500).json({ error: err.message || 'Error generating lyrics' });
+  }
+});
+
+// Firebase Storage: Generate signed URL for track
+app.post('/api/storage/signed-url', async (req, res) => {
+  try {
+    const { path: storagePath, expiresInMs } = req.body;
+    if (!storagePath) {
+      return res.status(400).json({ error: 'path is required' });
+    }
+
+    const signedUrl = await generateSignedUrl(storagePath, expiresInMs);
+    res.json({ signedUrl, path: storagePath });
+  } catch (err: any) {
+    console.error('Error generating signed URL:', err);
+    res.status(500).json({ error: err.message || 'Failed to generate signed URL' });
+  }
+});
+
+// Firebase Storage: Upload buffer
+app.post('/api/storage/upload', express.raw({ type: 'application/octet-stream', limit: '100mb' }), async (req, res) => {
+  try {
+    const storagePath = req.headers['x-storage-path'] as string;
+    const contentType = req.headers['x-content-type'] as string || 'audio/mpeg';
+
+    if (!storagePath) {
+      return res.status(400).json({ error: 'x-storage-path header is required' });
+    }
+
+    const url = await uploadToStorage(req.body, storagePath, contentType);
+    res.json({ url, path: storagePath });
+  } catch (err: any) {
+    console.error('Error uploading to storage:', err);
+    res.status(500).json({ error: err.message || 'Failed to upload' });
   }
 });
 
