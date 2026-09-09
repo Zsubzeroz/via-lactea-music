@@ -28,6 +28,7 @@ export interface TrackMetadata {
   aacPath?: string;
   mp3Path?: string;
   sizeMB: number;
+  coverUrl?: string;
   createdAt: string;
 }
 

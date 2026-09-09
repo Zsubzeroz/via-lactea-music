@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { ActiveTab, Track } from './types';
 import { INITIAL_TRACKS } from './data/mockTracks';
 import { audioEngine } from './services/audioEngine';
@@ -11,6 +11,10 @@ import { LibraryView } from './components/LibraryView';
 import { UploadModal } from './components/UploadModal';
 import { Disc, Radio, ListMusic } from 'lucide-react';
 
+const AlbumsView = React.lazy(() =>
+  import('./components/AlbumsView').then((m) => ({ default: m.AlbumsView }))
+);
+
 function trackFromMeta(m: TrackMetadata): Track {
   return {
     id: m.id,
@@ -20,6 +24,7 @@ function trackFromMeta(m: TrackMetadata): Track {
     category: m.category,
     duration: m.duration,
     audioUrl: undefined,
+    coverUrl: m.coverUrl,
     isSynthesized: false,
     bpm: 120,
     key: 'Custom',
@@ -271,6 +276,27 @@ export default function App() {
             onSelectTrack={handleSelectTrack}
             onPlayPause={handlePlayPause}
           />
+        )}
+
+        {activeTab === 'albums' && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-20">
+                <div className="flex flex-col items-center gap-3">
+                  <Disc className="w-8 h-8 text-zinc-600 animate-spin" />
+                  <span className="text-xs font-mono text-zinc-500">Carregando álbuns...</span>
+                </div>
+              </div>
+            }
+          >
+            <AlbumsView
+              tracks={tracks}
+              currentTrack={currentTrack}
+              isPlaying={isPlaying}
+              onSelectTrack={handleSelectTrack}
+              onPlayPause={handlePlayPause}
+            />
+          </Suspense>
         )}
 
         {activeTab === 'equalizer' && (

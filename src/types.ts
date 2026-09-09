@@ -8,6 +8,7 @@ export interface Track {
   category: string;
   duration: number; // in seconds
   audioUrl?: string; // Blob or synthesized generator id
+  coverUrl?: string;
   isSynthesized?: boolean;
   synthPreset?: 'piano' | 'synthwave' | 'hiphop' | 'ambient' | 'phonk';
   bpm: number;
@@ -44,4 +45,4 @@ export interface EQPreset {
   gains: number[]; // 10 bands
 }
 
-export type ActiveTab = 'player' | 'library' | 'equalizer';
+export type ActiveTab = 'player' | 'library' | 'albums' | 'equalizer';
