@@ -61,4 +61,4 @@ export interface GitFile {
   content?: string;
 }
 
-export type ActiveTab = 'player' | 'library' | 'equalizer' | 'github' | 'ai-harmony';
+export type ActiveTab = 'player' | 'library' | 'equalizer';

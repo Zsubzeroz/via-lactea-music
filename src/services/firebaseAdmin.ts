@@ -1,8 +1,9 @@
-import admin from 'firebase-admin';
+import { initializeApp, cert, getApps, App } from 'firebase-admin/app';
+import { getStorage } from 'firebase-admin/storage';
 import path from 'path';
 import fs from 'fs';
 
-let firebaseAdmin: admin.app.App | null = null;
+let firebaseApp: App | null = null;
 
 function getServiceAccountPath(): string {
   const possiblePaths = [
@@ -16,31 +17,36 @@ function getServiceAccountPath(): string {
 
   throw new Error(
     'Service account key not found. Place firebase-sa.json in:\n' +
-    '  - automation/credentials/firebase-sa.json (project root)\n' +
-    '  - ~/.config/via-lactea/firebase-sa.json\n\n' +
-    'Download from: https://console.firebase.google.com/project/via-lactea-music/settings/serviceaccounts/adminsdk'
+    '  - automation/credentials/firebase-sa.json\n' +
+    '  - ~/.config/via-lactea/firebase-sa.json'
   );
 }
 
-export function initFirebaseAdmin(): admin.app.App {
-  if (firebaseAdmin) return firebaseAdmin;
+export function initFirebaseAdmin(): App {
+  if (firebaseApp) return firebaseApp;
+
+  const existing = getApps();
+  if (existing.length > 0) {
+    firebaseApp = existing[0];
+    return firebaseApp;
+  }
 
   const serviceAccount = JSON.parse(
     fs.readFileSync(getServiceAccountPath(), 'utf-8')
   );
 
-  firebaseAdmin = admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+  firebaseApp = initializeApp({
+    credential: cert(serviceAccount),
     storageBucket: 'via-lactea-music.firebasestorage.app',
   });
 
   console.log('[Firebase Admin] Initialized for project:', serviceAccount.project_id);
-  return firebaseAdmin;
+  return firebaseApp;
 }
 
-export function getFirebaseAdmin(): admin.app.App {
-  if (!firebaseAdmin) return initFirebaseAdmin();
-  return firebaseAdmin;
+export function getFirebaseAdmin(): App {
+  if (!firebaseApp) return initFirebaseAdmin();
+  return firebaseApp;
 }
 
 export async function generateSignedUrl(
@@ -48,7 +54,7 @@ export async function generateSignedUrl(
   expiresInMs: number = 60 * 60 * 1000
 ): Promise<string> {
   const app = getFirebaseAdmin();
-  const bucket = app.storage().bucket();
+  const bucket = getStorage(app).bucket();
   const file = bucket.file(storagePath);
 
   const [signedUrl] = await file.getSignedUrl({
@@ -65,7 +71,7 @@ export async function uploadToStorage(
   contentType: string
 ): Promise<string> {
   const app = getFirebaseAdmin();
-  const bucket = app.storage().bucket();
+  const bucket = getStorage(app).bucket();
   const file = bucket.file(storagePath);
 
   await file.save(fileBuffer, {
