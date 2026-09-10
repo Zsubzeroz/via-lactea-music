@@ -6,6 +6,11 @@ import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { initFirebaseAdmin } from './src/services/firebaseAdmin';
+import { getFirestore } from 'firebase-admin/firestore';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
 
 dotenv.config();
 
@@ -21,8 +26,8 @@ app.use(express.json({ limit: '10mb' }));
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Range');
+  res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS, POST');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Range');
   res.header('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Content-Type');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
@@ -111,6 +116,112 @@ app.get('/api/health', (req, res) => {
     geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
     firebaseConfigured: firebaseOk,
   });
+});
+
+// ── Music Download API ────────────────────────────────────────────────────────
+
+const CATEGORIES = [
+  'Piano', 'Rap Nacional', 'Poesia Acústica', 'Música Eletrônica',
+  'Treino', 'Trap Nacional', 'Rock', 'Samba Pagode', 'Presbiteriano',
+  'Chamou atenção', 'Nacional', 'Hip Hop', 'Rap_Trap', 'Rei do pop',
+];
+
+app.post('/api/download', async (req, res) => {
+  try {
+    const { url, category } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+    if (!category) return res.status(400).json({ error: 'Category is required' });
+
+    const catDir = category.replace(/\s+/g, '_');
+    const outDir = path.join(AUDIO_DIR, catDir);
+    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+
+    const trackId = `track-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const outputTemplate = path.join(outDir, `${trackId}/%(title)s.%(ext)s`);
+
+    // Get video info first
+    const infoResult = await execFileAsync('yt-dlp', [
+      '--remote-components', 'ejs:github',
+      '--js-runtimes', 'node',
+      '--dump-json', '--no-playlist', url,
+    ], { timeout: 60000 });
+
+    const info = JSON.parse(infoResult.stdout);
+    const title = info.title || 'Unknown';
+    const artist = info.artist || info.uploader || 'Unknown';
+    const album = info.album || category;
+    const duration = info.duration || 0;
+    const thumbnail = info.thumbnail || '';
+
+    // Download audio as MP3
+    await execFileAsync('yt-dlp', [
+      '--remote-components', 'ejs:github',
+      '--js-runtimes', 'node',
+      '-x', '--audio-format', 'mp3',
+      '--audio-quality', '320K',
+      '--no-playlist',
+      '-o', outputTemplate,
+      '--no-overwrites',
+      url,
+    ], { timeout: 120000 });
+
+    // Find the downloaded file
+    const trackDir = path.join(outDir, trackId);
+    if (!fs.existsSync(trackDir)) {
+      return res.status(500).json({ error: 'Download failed - file not found' });
+    }
+    const files = fs.readdirSync(trackDir);
+    if (files.length === 0) {
+      return res.status(500).json({ error: 'Download failed - directory empty' });
+    }
+    const audioFile = files[0];
+    const audioPath = path.join(trackId, audioFile);
+    const fileSizeMB = fs.statSync(path.join(trackDir, audioFile)).size / (1024 * 1024);
+
+    // Download thumbnail as cover
+    const coverDir = path.join(COVERS_DIR, catDir);
+    if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
+    const coverPath = path.join(coverDir, `${trackId}.jpg`);
+    if (thumbnail) {
+      try {
+        await execFileAsync('curl', ['-sL', '-o', coverPath, thumbnail], { timeout: 10000 });
+      } catch { /* ignore cover download errors */ }
+    }
+
+    // Save metadata to Firestore
+    const trackData = {
+      id: trackId,
+      title,
+      artist,
+      album,
+      category,
+      duration,
+      format: 'MP3',
+      bitrate: '320 kbps',
+      sampleRate: '44.1 kHz',
+      sizeMB: Math.round(fileSizeMB * 10) / 10,
+      audioKey: `${catDir}/${audioPath}`,
+      coverUrl: fs.existsSync(coverPath) ? `/api/covers/${catDir}/${trackId}.jpg` : '',
+      createdAt: new Date().toISOString(),
+      source: 'yt-dlp',
+      sourceUrl: url,
+    };
+
+    const adminApp = initFirebaseAdmin();
+    const db = getFirestore(adminApp);
+    await db.collection('tracks').doc(trackId).set(trackData);
+
+    console.log(`[Download] OK: ${title} by ${artist} → ${audioPath}`);
+    return res.json({ success: true, track: trackData });
+  } catch (error: any) {
+    console.error('[Download] Error:', error.message);
+    return res.status(500).json({ error: error.message || 'Download failed' });
+  }
+});
+
+// List categories
+app.get('/api/categories', (_req, res) => {
+  res.json(CATEGORIES);
 });
 
 // GitHub Repo Architecture & Sync Status API

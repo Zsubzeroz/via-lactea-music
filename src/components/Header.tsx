@@ -1,11 +1,12 @@
 import React from 'react';
 import { ActiveTab } from '../types';
-import { Play, Sliders, Music2, Upload, Radio, Disc3 } from 'lucide-react';
+import { Play, Sliders, Music2, Upload, Download, Radio, Disc3 } from 'lucide-react';
 
 interface HeaderProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
   onOpenUpload: () => void;
+  onOpenDownload: () => void;
   isPlaying: boolean;
   activeTrackTitle?: string;
 }
@@ -14,6 +15,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   onOpenUpload,
+  onOpenDownload,
   isPlaying,
   activeTrackTitle,
 }) => {
@@ -35,14 +37,22 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={onOpenUpload}
-          className="px-2.5 sm:px-3 py-1.5 rounded-md border border-zinc-700 bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 text-xs font-medium flex items-center gap-1.5 transition-colors shrink-0"
-        >
-          <Upload className="w-3.5 h-3.5 text-zinc-400" />
-          <span className="hidden xs:inline">Adicionar</span>
-          <span>Áudio</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={onOpenDownload}
+            className="px-2.5 sm:px-3 py-1.5 rounded-md border border-zinc-700 bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 text-xs font-medium flex items-center gap-1.5 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5 text-[#00ff88]" />
+            <span className="hidden sm:inline">Baixar</span>
+          </button>
+          <button
+            onClick={onOpenUpload}
+            className="px-2.5 sm:px-3 py-1.5 rounded-md border border-zinc-700 bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 text-xs font-medium flex items-center gap-1.5 transition-colors"
+          >
+            <Upload className="w-3.5 h-3.5 text-zinc-400" />
+            <span className="hidden sm:inline">Upload</span>
+          </button>
+        </div>
       </div>
 
       {/* Navigation Tabs */}

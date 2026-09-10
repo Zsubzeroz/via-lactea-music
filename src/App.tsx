@@ -9,6 +9,7 @@ import { VisualizerCanvas } from './components/VisualizerCanvas';
 import { EqualizerModal } from './components/EqualizerModal';
 import { LibraryView } from './components/LibraryView';
 import { UploadModal } from './components/UploadModal';
+import { DownloadModal } from './components/DownloadModal';
 import { Disc, Radio, ListMusic } from 'lucide-react';
 
 const AlbumsView = React.lazy(() =>
@@ -50,6 +51,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('player');
   const [isUploadOpen, setIsUploadOpen] = useState<boolean>(false);
+  const [isDownloadOpen, setIsDownloadOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Load tracks from Firebase Firestore
@@ -178,6 +180,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenUpload={() => setIsUploadOpen(true)}
+        onOpenDownload={() => setIsDownloadOpen(true)}
         isPlaying={isPlaying}
         activeTrackTitle={currentTrack?.title}
       />
@@ -329,6 +332,12 @@ export default function App() {
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
         onAddTrack={handleAddLocalTrack}
+      />
+
+      <DownloadModal
+        isOpen={isDownloadOpen}
+        onClose={() => setIsDownloadOpen(false)}
+        onTrackDownloaded={() => showToast('Música baixada! Atualizando biblioteca...')}
       />
     </div>
   );
