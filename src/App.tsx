@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { ActiveTab, Track } from './types';
-import { INITIAL_TRACKS } from './data/mockTracks';
 import { audioEngine } from './services/audioEngine';
 import { listTracks, subscribeToTracks, TrackMetadata, getTrackDownloadUrl } from './services/firebase';
 import { getApiBase } from './config';
@@ -40,11 +39,11 @@ function trackFromMeta(m: TrackMetadata): Track {
 }
 
 export default function App() {
-  const [tracks, setTracks] = useState<Track[]>(INITIAL_TRACKS);
-  const [currentTrack, setCurrentTrack] = useState<Track>(INITIAL_TRACKS[0]);
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(INITIAL_TRACKS[0].duration);
+  const [duration, setDuration] = useState<number>(0);
   const [volume, setVolume] = useState<number>(0.85);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [isLoop, setIsLoop] = useState<boolean>(false);
@@ -114,7 +113,7 @@ export default function App() {
     } else {
       if (currentTime > 0) {
         audioEngine.resume();
-      } else {
+      } else if (currentTrack) {
         audioEngine.playTrack(currentTrack);
       }
     }
@@ -129,6 +128,7 @@ export default function App() {
   };
 
   const handleNextTrack = useCallback(() => {
+    if (!currentTrack) return;
     if (isLoop) {
       audioEngine.playTrack(currentTrack, 0);
       return;
@@ -144,6 +144,7 @@ export default function App() {
   }, [tracks, currentTrack, isLoop, isShuffle]);
 
   const handlePreviousTrack = () => {
+    if (!currentTrack) return;
     if (currentTime > 3) {
       audioEngine.seek(0);
       return;
@@ -178,11 +179,11 @@ export default function App() {
         setActiveTab={setActiveTab}
         onOpenUpload={() => setIsUploadOpen(true)}
         isPlaying={isPlaying}
-        activeTrackTitle={currentTrack.title}
+        activeTrackTitle={currentTrack?.title}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 md:p-6 pb-24 sm:pb-20 flex flex-col gap-4 sm:gap-6">
-        {activeTab === 'player' && (
+        {activeTab === 'player' && currentTrack && (
           <div className="flex flex-col gap-4 sm:gap-6">
             <VisualizerCanvas
               isPlaying={isPlaying}
@@ -239,7 +240,7 @@ export default function App() {
 
                 <div className="flex-1 overflow-y-auto max-h-80 space-y-1 relative">
                   {tracks.slice(0, 8).map((t, idx) => {
-                    const isSelected = t.id === currentTrack.id;
+                    const isSelected = currentTrack ? t.id === currentTrack.id : false;
                     return (
                       <button
                         key={t.id}
