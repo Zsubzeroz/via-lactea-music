@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import { Track } from '../types';
 import { Upload, FileAudio, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { convertAudio, getOptimalFormat, ConversionResult } from '../services/audioConverter';
-import { uploadTrack, TrackMetadata } from '../services/firebase';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -96,21 +95,6 @@ export const UploadModal: React.FC<UploadModalProps> = ({
       syncStatus: 'cached',
       chords: ['C', 'G', 'Am', 'F'],
     };
-
-    // Save metadata to Firebase Firestore
-    try {
-      await uploadTrack(selectedFile, {
-        title: fileName,
-        artist: 'Áudio Local Importado',
-        album: 'Sessão do Usuário',
-        category: trackCategory,
-        duration: conversionResult.originalDuration,
-        format: 'OGG',
-        sizeMB: parseFloat((conversionResult.oggSize / (1024 * 1024)).toFixed(1)),
-      });
-    } catch (err) {
-      console.warn('Firebase save failed, adding locally:', err);
-    }
 
     onAddTrack(newTrack);
     handleClose();

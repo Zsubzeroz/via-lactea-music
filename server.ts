@@ -1,10 +1,11 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
-import { initFirebaseAdmin, generateSignedUrl, uploadToStorage } from './src/services/firebaseAdmin';
+import { initFirebaseAdmin } from './src/services/firebaseAdmin';
 
 dotenv.config();
 
@@ -15,6 +16,51 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
 app.use(express.json({ limit: '10mb' }));
+
+// ── Local Audio Serving ──────────────────────────────────────────────────────
+
+const AUDIO_DIR = path.join(__dirname, 'audio');
+if (!fs.existsSync(AUDIO_DIR)) {
+  fs.mkdirSync(AUDIO_DIR, { recursive: true });
+}
+
+// Serve /api/audio/* from the local audio directory
+app.use('/api/audio', express.static(AUDIO_DIR, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.mp3')) res.setHeader('Content-Type', 'audio/mpeg');
+    else if (filePath.endsWith('.ogg')) res.setHeader('Content-Type', 'audio/ogg');
+    else if (filePath.endsWith('.m4a')) res.setHeader('Content-Type', 'audio/mp4');
+    else if (filePath.endsWith('.flac')) res.setHeader('Content-Type', 'audio/flac');
+    // Allow range requests for seeking
+    res.setHeader('Accept-Ranges', 'bytes');
+  },
+}));
+
+// Serve /api/covers/* from the local covers directory
+const COVERS_DIR = path.join(__dirname, 'covers');
+app.use('/api/covers', express.static(COVERS_DIR));
+
+app.get('/api/audio/check', (req, res) => {
+  const filename = req.query.file as string;
+  if (!filename) return res.status(400).json({ error: 'file param required' });
+  // Search recursively in audio dir
+  const found = findAudioFile(AUDIO_DIR, filename);
+  res.json({ exists: !!found, path: found });
+});
+
+function findAudioFile(dir: string, filename: string): string | null {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const result = findAudioFile(full, filename);
+      if (result) return result;
+    } else if (entry.name === filename) {
+      return full;
+    }
+  }
+  return null;
+}
 
 // Lazy Google GenAI Client
 let genAIClient: GoogleGenAI | null = null;
@@ -201,39 +247,7 @@ app.post('/api/gemini/generate-lyrics', async (req, res) => {
   }
 });
 
-// Firebase Storage: Generate signed URL for track
-app.post('/api/storage/signed-url', async (req, res) => {
-  try {
-    const { path: storagePath, expiresInMs } = req.body;
-    if (!storagePath) {
-      return res.status(400).json({ error: 'path is required' });
-    }
 
-    const signedUrl = await generateSignedUrl(storagePath, expiresInMs);
-    res.json({ signedUrl, path: storagePath });
-  } catch (err: any) {
-    console.error('Error generating signed URL:', err);
-    res.status(500).json({ error: err.message || 'Failed to generate signed URL' });
-  }
-});
-
-// Firebase Storage: Upload buffer
-app.post('/api/storage/upload', express.raw({ type: 'application/octet-stream', limit: '100mb' }), async (req, res) => {
-  try {
-    const storagePath = req.headers['x-storage-path'] as string;
-    const contentType = req.headers['x-content-type'] as string || 'audio/mpeg';
-
-    if (!storagePath) {
-      return res.status(400).json({ error: 'x-storage-path header is required' });
-    }
-
-    const url = await uploadToStorage(req.body, storagePath, contentType);
-    res.json({ url, path: storagePath });
-  } catch (err: any) {
-    console.error('Error uploading to storage:', err);
-    res.status(500).json({ error: err.message || 'Failed to upload' });
-  }
-});
 
 async function start() {
   if (process.env.NODE_ENV !== 'production') {

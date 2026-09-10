@@ -8,6 +8,7 @@ export interface Track {
   category: string;
   duration: number; // in seconds
   audioUrl?: string; // Blob or synthesized generator id
+  audioKey?: string; // R2 storage key
   coverUrl?: string;
   isSynthesized?: boolean;
   synthPreset?: 'piano' | 'synthwave' | 'hiphop' | 'ambient' | 'phonk';

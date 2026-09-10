@@ -1,5 +1,4 @@
 import { initializeApp } from 'firebase/app';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL, listAll } from 'firebase/storage';
 import { getFirestore, collection, doc, setDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -13,7 +12,6 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const storage = getStorage(app);
 export const db = getFirestore(app);
 
 export interface TrackMetadata {
@@ -24,47 +22,11 @@ export interface TrackMetadata {
   category: string;
   duration: number;
   format: 'OGG' | 'AAC' | 'MP3';
-  oggPath?: string;
-  aacPath?: string;
-  mp3Path?: string;
   sizeMB: number;
+  audioKey?: string;
+  coverKey?: string;
   coverUrl?: string;
   createdAt: string;
-}
-
-export async function uploadTrack(
-  file: File,
-  metadata: Omit<TrackMetadata, 'id' | 'createdAt'>,
-  onProgress?: (percent: number) => void
-): Promise<string> {
-  const trackId = `track-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const storagePath = `tracks/${metadata.category}/${trackId}/${file.name}`;
-  const storageRef = ref(storage, storagePath);
-
-  const uploadTask = uploadBytesResumable(storageRef, file);
-
-  return new Promise((resolve, reject) => {
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        onProgress?.(percent);
-      },
-      (error) => reject(error),
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-
-        const docData: TrackMetadata = {
-          ...metadata,
-          id: trackId,
-          [`${metadata.format.toLowerCase()}Path`]: storagePath,
-          createdAt: new Date().toISOString(),
-        };
-
-        await setDoc(doc(db, 'tracks', trackId), docData);
-        resolve(trackId);
-      }
-    );
-  });
 }
 
 export async function listTracks(): Promise<TrackMetadata[]> {
@@ -81,7 +43,6 @@ export function subscribeToTracks(callback: (tracks: TrackMetadata[]) => void) {
   });
 }
 
-export async function getTrackDownloadUrl(storagePath: string): Promise<string> {
-  const storageRef = ref(storage, storagePath);
-  return getDownloadURL(storageRef);
+export async function getTrackDownloadUrl(audioKey: string): Promise<string> {
+  return `/api/audio/${audioKey}`;
 }

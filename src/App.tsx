@@ -23,7 +23,8 @@ function trackFromMeta(m: TrackMetadata): Track {
     album: m.album,
     category: m.category,
     duration: m.duration,
-    audioUrl: undefined,
+    audioUrl: m.audioKey ? `/api/audio/${m.audioKey}` : undefined,
+    audioKey: m.audioKey,
     coverUrl: m.coverUrl,
     isSynthesized: false,
     bpm: 120,
@@ -32,7 +33,7 @@ function trackFromMeta(m: TrackMetadata): Track {
     bitrate: '320 kbps',
     sampleRate: '44.1 kHz',
     sizeMB: m.sizeMB,
-    localPath: `Firebase/${m.category}/${m.title}`,
+    localPath: `audio/${m.category}/${m.title}`,
     syncStatus: 'synced',
   };
 }

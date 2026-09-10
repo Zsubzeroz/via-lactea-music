@@ -1,27 +1,30 @@
 #!/usr/bin/env tsx
 /**
- * Batch import: local folder → Firebase Storage + Firestore
+ * Batch import: local folder → local audio/ + Firestore metadata
  *
  * Usage:
  *   npx tsx scripts/import_local_folder.ts "/home/estifer/Musica"
  *   npm run import -- "/home/estifer/Musica"
- *
- * Requires: firebase-admin (service account in automation/credentials/firebase-sa.json)
  */
 
 import fs from 'fs';
 import path from 'path';
 import { parseFile } from 'music-metadata';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getStorage } from 'firebase-admin/storage';
 import { getFirestore } from 'firebase-admin/firestore';
 import { createHash } from 'crypto';
 
-// ── Firebase Admin init ──────────────────────────────────────────────────────
+// ── Paths ────────────────────────────────────────────────────────────────────
+
+const PROJECT_ROOT = path.resolve(process.cwd());
+const AUDIO_DIR = path.join(PROJECT_ROOT, 'audio');
+const COVERS_DIR = path.join(PROJECT_ROOT, 'covers');
+
+// ── Firebase Admin init ─────────────────────────────────────────────────────
 
 function getServiceAccountPath(): string {
   const possiblePaths = [
-    path.resolve(process.cwd(), 'automation/credentials/firebase-sa.json'),
+    path.resolve(PROJECT_ROOT, 'automation/credentials/firebase-sa.json'),
     path.resolve(process.env.HOME || '', '.config/via-lactea/firebase-sa.json'),
   ];
   for (const p of possiblePaths) {
@@ -39,23 +42,7 @@ function initAdmin() {
   const sa = JSON.parse(fs.readFileSync(getServiceAccountPath(), 'utf-8'));
   return initializeApp({
     credential: cert(sa),
-    storageBucket: 'via-lactea-music.firebasestorage.app',
   });
-}
-
-// ── Cover extraction + WebP conversion ───────────────────────────────────────
-
-async function extractCoverToWebP(filePath: string, trackId: string): Promise<Buffer | null> {
-  try {
-    const metadata = await parseFile(filePath, { duration: false });
-    const pic = metadata.common.picture?.[0];
-    if (!pic?.data) return null;
-
-    // Convert Uint8Array to Buffer
-    return Buffer.from(pic.data);
-  } catch {
-    return null;
-  }
 }
 
 // ── File scanning ────────────────────────────────────────────────────────────
@@ -65,7 +52,7 @@ const AUDIO_EXTS = new Set(['.mp3', '.flac', '.ogg', '.m4a']);
 interface ScanResult {
   filePath: string;
   relativePath: string;
-  category: string; // subfolder name
+  category: string;
 }
 
 function scanFolder(rootDir: string): ScanResult[] {
@@ -97,6 +84,16 @@ function fileHash(buffer: Buffer): string {
   return createHash('md5').update(buffer).digest('hex');
 }
 
+// ── Sanitize filename ────────────────────────────────────────────────────────
+
+function sanitize(name: string): string {
+  return name
+    .replace(/[\/\\:*?"<>|]/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .slice(0, 120);
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 interface ImportMeta {
@@ -108,7 +105,8 @@ interface ImportMeta {
   duration: number;
   format: 'OGG' | 'AAC' | 'MP3';
   sizeMB: number;
-  coverUrl?: string;
+  audioKey: string;
+  coverKey?: string;
   createdAt: string;
   audioHash: string;
 }
@@ -121,11 +119,14 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`\n🎵 Via Láctea Music — Batch Import`);
+  console.log(`\n🎵 Via Láctea Music — Batch Import (Local)`);
   console.log(`   Source: ${targetDir}\n`);
 
+  // Ensure directories exist
+  if (!fs.existsSync(AUDIO_DIR)) fs.mkdirSync(AUDIO_DIR, { recursive: true });
+  if (!fs.existsSync(COVERS_DIR)) fs.mkdirSync(COVERS_DIR, { recursive: true });
+
   const app = initAdmin();
-  const bucket = getStorage(app).bucket();
   const db = getFirestore(app);
 
   // Get existing tracks for dedup
@@ -163,7 +164,7 @@ async function main() {
       const duration = metadata.format.duration || 0;
       const formatMap: Record<string, 'MP3' | 'OGG' | 'AAC'> = {
         '.mp3': 'MP3',
-        '.flac': 'MP3', // Will be converted
+        '.flac': 'MP3',
         '.ogg': 'OGG',
         '.m4a': 'AAC',
       };
@@ -180,7 +181,7 @@ async function main() {
       // Generate track ID
       const trackId = `track-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-      // Upload audio
+      // Read audio file
       const audioBuffer = fs.readFileSync(filePath);
       const audioHash = fileHash(audioBuffer);
 
@@ -190,37 +191,26 @@ async function main() {
         continue;
       }
 
-      const audioStoragePath = `tracks/${category}/${trackId}/${fileName}`;
-      await bucket.file(audioStoragePath).save(audioBuffer, {
-        contentType: ext === '.mp3' ? 'audio/mpeg' : ext === '.flac' ? 'audio/flac' : ext === '.ogg' ? 'audio/ogg' : 'audio/mp4',
-        metadata: { cacheControl: 'public, max-age=31536000' },
-      });
+      // Copy audio to local audio/{category}/{trackId}/
+      const categoryDir = path.join(AUDIO_DIR, sanitize(category));
+      const trackDir = path.join(categoryDir, trackId);
+      fs.mkdirSync(trackDir, { recursive: true });
 
-      // Extract cover
-      let coverUrl: string | undefined;
+      const safeFileName = sanitize(path.basename(fileName, ext)) + ext;
+      const audioKey = `${sanitize(category)}/${trackId}/${safeFileName}`;
+      const destPath = path.join(trackDir, safeFileName);
+      fs.copyFileSync(filePath, destPath);
+
+      // Extract and save cover art locally
+      let coverKey: string | undefined;
       const pic = metadata.common.picture?.[0];
       if (pic?.data) {
-        const coverStoragePath = `covers/${trackId}.webp`;
-        // Save raw image buffer (client-side will handle WebP conversion for display)
-        // For now, save as the original format
-        const ext = pic.format?.includes('jpeg') ? 'jpg' : pic.format?.includes('png') ? 'png' : 'jpg';
-        const coverPath = `covers/${trackId}.${ext}`;
-        await bucket.file(coverPath).save(pic.data, {
-          contentType: pic.format || 'image/jpeg',
-          metadata: { cacheControl: 'public, max-age=31536000' },
-        });
-        const [url] = await bucket.file(coverPath).getSignedUrl({
-          action: 'read',
-          expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
-        });
-        coverUrl = url;
+        const coverBuffer = Buffer.from(pic.data);
+        const coverExt = pic.format?.includes('jpeg') ? 'jpg' : pic.format?.includes('png') ? 'png' : 'jpg';
+        coverKey = `${trackId}.${coverExt}`;
+        const coverPath = path.join(COVERS_DIR, coverKey);
+        fs.writeFileSync(coverPath, coverBuffer);
       }
-
-      // Get audio download URL
-      const [audioUrl] = await bucket.file(audioStoragePath).getSignedUrl({
-        action: 'read',
-        expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
-      });
 
       // Save to Firestore
       const docData: ImportMeta = {
@@ -232,7 +222,8 @@ async function main() {
         duration,
         format,
         sizeMB: parseFloat((fileStat.size / (1024 * 1024)).toFixed(1)),
-        coverUrl,
+        audioKey,
+        coverKey,
         createdAt: new Date().toISOString(),
         audioHash,
       };

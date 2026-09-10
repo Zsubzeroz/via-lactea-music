@@ -140,13 +140,18 @@ class AudioEngineService {
     this.onTrackEndedCallback = onTrackEnded;
   }
 
-  public playTrack(track: Track, startFromSeconds = 0) {
+  public async playTrack(track: Track, startFromSeconds = 0) {
     this.initContext();
     this.currentTrack = track;
     this.stopCurrent();
 
+    // Build audio URL from audioKey if not already set
+    if (track.audioKey && !track.audioUrl) {
+      track.audioUrl = `/api/audio/${track.audioKey}`;
+    }
+
     if (track.audioUrl && !track.isSynthesized) {
-      // Play real audio file (from local file upload)
+      // Play real audio file (from R2 signed URL)
       this.isSynthPlaying = false;
       if (this.audioElement) {
         this.audioElement.src = track.audioUrl;
