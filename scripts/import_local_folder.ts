@@ -103,7 +103,7 @@ interface ImportMeta {
   album: string;
   category: string;
   duration: number;
-  format: 'OGG' | 'AAC' | 'MP3';
+  format: 'OGG' | 'AAC' | 'MP3' | 'FLAC';
   sizeMB: number;
   audioKey: string;
   coverKey?: string;
@@ -162,9 +162,9 @@ async function main() {
       const artist = metadata.common.artist || 'Desconhecido';
       const album = metadata.common.album || 'Sem Álbum';
       const duration = metadata.format.duration || 0;
-      const formatMap: Record<string, 'MP3' | 'OGG' | 'AAC'> = {
+      const formatMap: Record<string, 'MP3' | 'OGG' | 'AAC' | 'FLAC'> = {
         '.mp3': 'MP3',
-        '.flac': 'MP3',
+        '.flac': 'FLAC',
         '.ogg': 'OGG',
         '.m4a': 'AAC',
       };

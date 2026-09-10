@@ -22,13 +22,24 @@ const PORT = parseInt(process.env.PORT || '3001', 10);
 
 app.use(express.json({ limit: '10mb' }));
 
-// ── CORS for tunnel access ───────────────────────────────────────────────────
+// ── CORS for tunnel + Firebase Hosting access ────────────────────────────────
+
+const ALLOWED_ORIGINS = [
+  'https://via-lactea-music.web.app',
+  'https://via-lactea-music.firebaseapp.com',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
+];
 
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin || '';
+  if (ALLOWED_ORIGINS.includes(origin) || origin.includes('.trycloudflare.com')) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
   res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS, POST');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Range');
   res.header('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Content-Type');
+  res.header('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -318,7 +329,7 @@ Forneça a resposta em formato JSON estrito com os seguintes campos:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-2.0-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -326,7 +337,7 @@ Forneça a resposta em formato JSON estrito com os seguintes campos:
     });
 
     const parsed = JSON.parse(response.text || '{}');
-    return res.json({ analysis: parsed, source: 'gemini-3.8-flash' });
+    return res.json({ analysis: parsed, source: 'gemini-2.0-flash' });
   } catch (error: any) {
     console.error('Error in analyze-track:', error);
     return res.status(500).json({
@@ -358,7 +369,7 @@ app.post('/api/gemini/generate-lyrics', async (req, res) => {
     const prompt = `Escreva uma letra de música autoral poética no estilo "${genre || 'Poesia Acústica / Rap Nacional'}" inspirada na estética de precisão, noites de programação, piano clássico e reflexões urbanas. Tema: "${theme || 'Foco, arte e jornada'}". Estilo de referência: "${artistStyle || 'Poesia Acústica / Emicida / Hans Zimmer'}". Divida em seções com marcações [Intro], [Verso 1], [Refrão], [Verso 2], [Ponte], [Outro]. Máximo 25 linhas, rimas ricas e métrica musical limpa.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-2.0-flash',
       contents: prompt,
     });
 
