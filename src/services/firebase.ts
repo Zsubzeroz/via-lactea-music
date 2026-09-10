@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, doc, setDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { getApiBase } from '../config';
 
 const firebaseConfig = {
   apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY,
@@ -44,5 +45,5 @@ export function subscribeToTracks(callback: (tracks: TrackMetadata[]) => void) {
 }
 
 export async function getTrackDownloadUrl(audioKey: string): Promise<string> {
-  return `/api/audio/${audioKey}`;
+  return `${getApiBase()}/api/audio/${audioKey}`;
 }

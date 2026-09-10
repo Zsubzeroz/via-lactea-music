@@ -3,6 +3,7 @@ import { ActiveTab, Track } from './types';
 import { INITIAL_TRACKS } from './data/mockTracks';
 import { audioEngine } from './services/audioEngine';
 import { listTracks, subscribeToTracks, TrackMetadata, getTrackDownloadUrl } from './services/firebase';
+import { getApiBase } from './config';
 import { Header } from './components/Header';
 import { PlayerBar } from './components/PlayerBar';
 import { VisualizerCanvas } from './components/VisualizerCanvas';
@@ -23,7 +24,7 @@ function trackFromMeta(m: TrackMetadata): Track {
     album: m.album,
     category: m.category,
     duration: m.duration,
-    audioUrl: m.audioKey ? `/api/audio/${m.audioKey}` : undefined,
+    audioUrl: m.audioKey ? `${getApiBase()}/api/audio/${m.audioKey}` : undefined,
     audioKey: m.audioKey,
     coverUrl: m.coverUrl,
     isSynthesized: false,

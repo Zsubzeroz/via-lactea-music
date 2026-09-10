@@ -17,6 +17,17 @@ const PORT = parseInt(process.env.PORT || '3001', 10);
 
 app.use(express.json({ limit: '10mb' }));
 
+// ── CORS for tunnel access ───────────────────────────────────────────────────
+
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Range');
+  res.header('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
 // ── Local Audio Serving ──────────────────────────────────────────────────────
 
 const AUDIO_DIR = path.join(__dirname, 'audio');

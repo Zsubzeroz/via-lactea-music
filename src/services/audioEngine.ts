@@ -1,4 +1,5 @@
 import { EQBand, EQPreset, Track } from '../types';
+import { getApiBase } from '../config';
 
 export const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 
@@ -147,7 +148,7 @@ class AudioEngineService {
 
     // Build audio URL from audioKey if not already set
     if (track.audioKey && !track.audioUrl) {
-      track.audioUrl = `/api/audio/${track.audioKey}`;
+      track.audioUrl = `${getApiBase()}/api/audio/${track.audioKey}`;
     }
 
     if (track.audioUrl && !track.isSynthesized) {
