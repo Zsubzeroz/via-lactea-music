@@ -26,6 +26,7 @@ interface LibraryViewProps {
   currentTrack: Track | null;
   isPlaying: boolean;
   onSelectTrack: (track: Track) => void;
+  onPlayFromQueue: (tracks: Track[], track: Track) => void;
   onPlayPause: () => void;
   onAnalyzeTrack: (track: Track) => void;
   onDownloadOffline: (track: Track) => void;
@@ -38,6 +39,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   currentTrack,
   isPlaying,
   onSelectTrack,
+  onPlayFromQueue,
   onPlayPause,
   onAnalyzeTrack,
   onDownloadOffline,
@@ -210,7 +212,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         if (isCurrent) {
                           onPlayPause();
                         } else {
-                          onSelectTrack(track);
+                          onPlayFromQueue(filteredTracks, track);
                         }
                       }}
                       className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-transform ${
@@ -301,7 +303,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         if (isCurrent) {
                           onPlayPause();
                         } else {
-                          onSelectTrack(track);
+                          onPlayFromQueue(filteredTracks, track);
                         }
                       }}
                       className={`w-8 h-8 rounded flex items-center justify-center shrink-0 transition-transform active:scale-95 ${

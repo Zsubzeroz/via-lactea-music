@@ -28,7 +28,11 @@ function trackFromMeta(m: TrackMetadata): Track {
     duration: m.duration,
     audioUrl: m.audioKey ? `${getApiBase()}/api/audio/${m.audioKey}` : undefined,
     audioKey: m.audioKey,
-    coverUrl: m.coverUrl ? `${getApiBase()}${m.coverUrl}` : undefined,
+    coverUrl: m.coverUrl
+      ? `${getApiBase()}${m.coverUrl}`
+      : m.coverKey
+        ? `${getApiBase()}/api/covers/${m.coverKey}`
+        : undefined,
     isSynthesized: false,
     bpm: 120,
     key: 'Custom',
@@ -59,6 +63,8 @@ export default function App() {
   const [offlineTrackIds, setOfflineTrackIds] = useState<Set<string>>(new Set());
   const [showTrash, setShowTrash] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<Track | null>(null);
+  const [queue, setQueue] = useState<Track[]>([]);
+  const [queueIndex, setQueueIndex] = useState<number>(-1);
 
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
@@ -183,20 +189,47 @@ export default function App() {
     showToast(`Tocando: ${track.title}`);
   };
 
+  const playFromQueue = (queueTracks: Track[], track: Track) => {
+    const idx = queueTracks.findIndex((t) => t.id === track.id);
+    setQueue(queueTracks);
+    setQueueIndex(idx >= 0 ? idx : 0);
+    handleSelectTrack(track);
+  };
+
+  const queueRef = useRef(queue);
+  queueRef.current = queue;
+  const queueIndexRef = useRef(queueIndex);
+  queueIndexRef.current = queueIndex;
+
   const handleNextTrack = useCallback(() => {
     if (!currentTrackRef.current) return;
     if (isLoopRef.current) {
       audioEngine.playTrack(currentTrackRef.current, 0);
       return;
     }
-    const currentIndex = tracks.findIndex((t) => t.id === currentTrackRef.current!.id);
-    let nextIndex = 0;
-    if (isShuffleRef.current) {
-      nextIndex = Math.floor(Math.random() * tracks.length);
+
+    const q = queueRef.current;
+    const qi = queueIndexRef.current;
+
+    if (q.length > 0) {
+      let nextIdx: number;
+      if (isShuffleRef.current) {
+        nextIdx = Math.floor(Math.random() * q.length);
+      } else {
+        nextIdx = (qi + 1) % q.length;
+      }
+      setQueueIndex(nextIdx);
+      handleSelectTrack(q[nextIdx]);
     } else {
-      nextIndex = (currentIndex + 1) % tracks.length;
+      const currentIndex = tracks.findIndex((t) => t.id === currentTrackRef.current!.id);
+      let nextIndex = 0;
+      if (isShuffleRef.current) {
+        nextIndex = Math.floor(Math.random() * tracks.length);
+      } else {
+        nextIndex = (currentIndex + 1) % tracks.length;
+      }
+      handleSelectTrack(tracks[nextIndex]);
     }
-    handleSelectTrack(tracks[nextIndex]);
   }, [tracks]);
 
   const handleNextTrackRef = useRef(handleNextTrack);
@@ -216,9 +249,19 @@ export default function App() {
       audioEngine.seek(0);
       return;
     }
-    const currentIndex = tracks.findIndex((t) => t.id === currentTrack.id);
-    const prevIndex = (currentIndex - 1 + tracks.length) % tracks.length;
-    handleSelectTrack(tracks[prevIndex]);
+
+    const q = queueRef.current;
+    const qi = queueIndexRef.current;
+
+    if (q.length > 0) {
+      const prevIdx = (qi - 1 + q.length) % q.length;
+      setQueueIndex(prevIdx);
+      handleSelectTrack(q[prevIdx]);
+    } else {
+      const currentIndex = tracks.findIndex((t) => t.id === currentTrack.id);
+      const prevIndex = (currentIndex - 1 + tracks.length) % tracks.length;
+      handleSelectTrack(tracks[prevIndex]);
+    }
   };
 
   const handleVolumeChange = (newVol: number) => {
@@ -405,7 +448,7 @@ export default function App() {
                     return (
                       <button
                         key={t.id}
-                        onClick={() => handleSelectTrack(t)}
+                        onClick={() => playFromQueue(activeTracks.slice(0, 8), t)}
                         className={`w-full p-2 rounded text-left transition-colors flex items-center justify-between gap-2 text-xs ${
                           isSelected
                             ? 'bg-[#ff0055]/15 border border-[#ff0055]/40 text-white'
@@ -433,17 +476,18 @@ export default function App() {
         )}
 
         {activeTab === 'library' && (
-          <LibraryView
-            tracks={activeTracks}
-            currentTrack={currentTrack}
-            isPlaying={isPlaying}
-            onSelectTrack={handleSelectTrack}
-            onPlayPause={handlePlayPause}
-            onAnalyzeTrack={() => {}}
-            onDownloadOffline={handleDownloadOffline}
-            onDeleteTrack={handleSoftDelete}
-            offlineTrackIds={offlineTrackIds}
-          />
+            <LibraryView
+              tracks={activeTracks}
+              currentTrack={currentTrack}
+              isPlaying={isPlaying}
+              onSelectTrack={handleSelectTrack}
+              onPlayFromQueue={playFromQueue}
+              onPlayPause={handlePlayPause}
+              onAnalyzeTrack={() => {}}
+              onDownloadOffline={handleDownloadOffline}
+              onDeleteTrack={handleSoftDelete}
+              offlineTrackIds={offlineTrackIds}
+            />
         )}
 
         {activeTab === 'albums' && (
@@ -462,6 +506,7 @@ export default function App() {
               currentTrack={currentTrack}
               isPlaying={isPlaying}
               onSelectTrack={handleSelectTrack}
+              onPlayFromQueue={playFromQueue}
               onPlayPause={handlePlayPause}
             />
           </Suspense>

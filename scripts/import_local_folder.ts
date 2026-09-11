@@ -107,6 +107,7 @@ interface ImportMeta {
   sizeMB: number;
   audioKey: string;
   coverKey?: string;
+  coverUrl?: string;
   createdAt: string;
   audioHash: string;
 }
@@ -224,6 +225,7 @@ async function main() {
         sizeMB: parseFloat((fileStat.size / (1024 * 1024)).toFixed(1)),
         audioKey,
         coverKey,
+        coverUrl: coverKey ? `/api/covers/${coverKey}` : undefined,
         createdAt: new Date().toISOString(),
         audioHash,
       };

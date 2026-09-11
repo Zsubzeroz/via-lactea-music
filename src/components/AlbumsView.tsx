@@ -7,6 +7,7 @@ interface AlbumsViewProps {
   currentTrack: Track | null;
   isPlaying: boolean;
   onSelectTrack: (track: Track) => void;
+  onPlayFromQueue: (tracks: Track[], track: Track) => void;
   onPlayPause: () => void;
 }
 
@@ -36,6 +37,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
   currentTrack,
   isPlaying,
   onSelectTrack,
+  onPlayFromQueue,
   onPlayPause,
 }) => {
   const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null);
@@ -83,9 +85,9 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
 
   const handleAlbumClick = (album: AlbumGroup) => {
     setSelectedAlbum(album.album);
-    // Play first track of the album
+    // Play first track of the album with album queue
     if (album.tracks.length > 0) {
-      onSelectTrack(album.tracks[0]);
+      onPlayFromQueue(album.tracks, album.tracks[0]);
     }
   };
 
@@ -252,7 +254,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
               return (
                 <button
                   key={track.id}
-                  onClick={() => onSelectTrack(track)}
+                  onClick={() => onPlayFromQueue(selectedAlbumTracks, track)}
                   className={`w-full p-2 rounded text-left transition-colors flex items-center gap-3 text-xs ${
                     isActive
                       ? 'bg-[#ff0055]/15 border border-[#ff0055]/40 text-white'
