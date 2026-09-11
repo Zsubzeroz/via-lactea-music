@@ -3,6 +3,7 @@ import { ActiveTab, Track } from './types';
 import { audioEngine } from './services/audioEngine';
 import { listTracks, subscribeToTracks, TrackMetadata, getTrackDownloadUrl } from './services/firebase';
 import { getApiBase } from './config';
+import { getOfflineTracks } from './services/offlineStore';
 import { Header } from './components/Header';
 import { PlayerBar } from './components/PlayerBar';
 import { VisualizerCanvas } from './components/VisualizerCanvas';
@@ -54,19 +55,45 @@ export default function App() {
   const [isDownloadOpen, setIsDownloadOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Load tracks from Firebase Firestore
   useEffect(() => {
+    let active = true;
+
+    const loadLocalTracks = async () => {
+      const localTracks = await getOfflineTracks();
+      if (!active) return;
+
+      if (localTracks.length > 0) {
+        setTracks((prev) => {
+          const merged = [...localTracks, ...prev.filter((track) => !localTracks.some((localTrack) => localTrack.id === track.id))];
+          return merged;
+        });
+        setCurrentTrack((prev) => prev ?? localTracks[0]);
+        setDuration((prev) => prev || localTracks[0].duration);
+      }
+    };
+
+    loadLocalTracks();
+
     const unsub = subscribeToTracks((fbTracks) => {
-      if (fbTracks.length > 0) {
-        const converted = fbTracks.map(trackFromMeta);
-        setTracks(converted);
-        if (converted.length > 0 && !isPlaying) {
-          setCurrentTrack(converted[0]);
-          setDuration(converted[0].duration);
-        }
+      if (!active || fbTracks.length === 0) return;
+      const converted = fbTracks.map(trackFromMeta);
+      setTracks((prev) => {
+        const offlineOnly = prev.filter((track) => track.syncStatus === 'offline' || !!track.audioUrl?.startsWith('blob:'));
+        const merged = [...offlineOnly, ...converted];
+        const unique = new Map<string, Track>();
+        merged.forEach((track) => unique.set(track.id, track));
+        return Array.from(unique.values());
+      });
+      if (!isPlaying) {
+        setCurrentTrack(converted[0]);
+        setDuration(converted[0].duration);
       }
     });
-    return () => unsub();
+
+    return () => {
+      active = false;
+      unsub();
+    };
   }, []);
 
   const showToast = (msg: string) => {

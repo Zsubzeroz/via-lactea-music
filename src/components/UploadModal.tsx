@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Track } from '../types';
 import { Upload, FileAudio, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { convertAudio, getOptimalFormat, ConversionResult } from '../services/audioConverter';
+import { saveOfflineTrack } from '../services/offlineStore';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -74,6 +75,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 
     const fileName = selectedFile.name.replace(/\.[^/.]+$/, '');
     const optimalFormat = getOptimalFormat();
+    const chosenBlob = optimalFormat === 'ogg' ? conversionResult.oggBlob : conversionResult.aacBlob;
     const audioUrl = optimalFormat === 'ogg' ? conversionResult.oggUrl : conversionResult.aacUrl;
 
     const newTrack: Track = {
@@ -83,19 +85,20 @@ export const UploadModal: React.FC<UploadModalProps> = ({
       album: 'Sessão do Usuário',
       category: trackCategory,
       duration: conversionResult.originalDuration,
-      audioUrl: audioUrl,
+      audioUrl,
       isSynthesized: false,
       bpm: 120,
       key: 'Custom',
-      format: 'OGG',
+      format: optimalFormat === 'ogg' ? 'OGG' : 'AAC',
       bitrate: '192 kbps',
       sampleRate: '44.1 kHz',
-      sizeMB: parseFloat((conversionResult.oggSize / (1024 * 1024)).toFixed(1)),
+      sizeMB: parseFloat(((optimalFormat === 'ogg' ? conversionResult.oggSize : conversionResult.aacSize) / (1024 * 1024)).toFixed(1)),
       localPath: `Uploads/${selectedFile.name}`,
-      syncStatus: 'cached',
+      syncStatus: 'offline',
       chords: ['C', 'G', 'Am', 'F'],
     };
 
+    await saveOfflineTrack(newTrack, chosenBlob);
     onAddTrack(newTrack);
     handleClose();
   };
