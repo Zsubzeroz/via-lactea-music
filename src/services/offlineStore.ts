@@ -1,4 +1,5 @@
 import { Track } from '../types';
+import { getApiBase } from '../config';
 
 const DB_NAME = 'via-lactea-music';
 const STORE_NAME = 'tracks';
@@ -81,4 +82,31 @@ export async function getOfflineTracks(): Promise<Track[]> {
   );
 
   return tracks.filter((track) => !!track.id).sort((a, b) => b.duration - a.duration);
+}
+
+export async function isTrackOffline(trackId: string): Promise<boolean> {
+  if (!('indexedDB' in window)) return false;
+  const db = await openDatabase();
+  return new Promise<boolean>((resolve) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.get(trackId);
+    request.onsuccess = () => {
+      const row = request.result;
+      resolve(!!row && !!row.audioData);
+    };
+    request.onerror = () => resolve(false);
+  });
+}
+
+export async function fetchAndSaveOfflineTrack(track: Track): Promise<string | null> {
+  if (!track.audioKey || !track.audioUrl) return null;
+
+  const url = `${getApiBase()}/api/audio/${track.audioKey}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+  const blob = await response.blob();
+  await saveOfflineTrack(track, blob);
+  return URL.createObjectURL(blob);
 }

@@ -13,7 +13,9 @@ import {
   Repeat, 
   Sliders, 
   HardDrive,
-  FileAudio
+  FileAudio,
+  Download,
+  Check
 } from 'lucide-react';
 
 interface PlayerBarProps {
@@ -24,6 +26,7 @@ interface PlayerBarProps {
   volume: number;
   isShuffle: boolean;
   isLoop: boolean;
+  isOffline: boolean;
   onPlayPause: () => void;
   onPrevious: () => void;
   onNext: () => void;
@@ -32,6 +35,7 @@ interface PlayerBarProps {
   onToggleShuffle: () => void;
   onToggleLoop: () => void;
   onOpenEqualizer: () => void;
+  onDownloadOffline: () => void;
 }
 
 export const PlayerBar: React.FC<PlayerBarProps> = ({
@@ -42,6 +46,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   volume,
   isShuffle,
   isLoop,
+  isOffline,
   onPlayPause,
   onPrevious,
   onNext,
@@ -50,6 +55,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   onToggleShuffle,
   onToggleLoop,
   onOpenEqualizer,
+  onDownloadOffline,
 }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [prevVolume, setPrevVolume] = useState(volume);
@@ -127,6 +133,18 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
 
         {/* Mobile Action Controls */}
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onDownloadOffline}
+            className={`w-9 h-9 rounded flex items-center justify-center transition-colors ${
+              isOffline
+                ? 'text-[#00ff88]'
+                : 'text-zinc-400 hover:text-[#00ff88] active:bg-zinc-800'
+            }`}
+            title={isOffline ? 'Disponível offline' : 'Salvar offline'}
+          >
+            {isOffline ? <Check className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+          </button>
+
           <button
             id="btn-mobile-eq"
             onClick={onOpenEqualizer}
@@ -279,6 +297,18 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
 
         {/* Volume & Studio Tools (Right) */}
         <div className="flex items-center gap-3 min-w-[200px] justify-end">
+          <button
+            onClick={onDownloadOffline}
+            className={`p-1.5 rounded transition-colors ${
+              isOffline
+                ? 'text-[#00ff88]'
+                : 'text-zinc-500 hover:text-[#00ff88] hover:bg-zinc-800'
+            }`}
+            title={isOffline ? 'Disponível offline' : 'Salvar offline'}
+          >
+            {isOffline ? <Check className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+          </button>
+
           <button
             id="btn-quick-eq"
             onClick={onOpenEqualizer}

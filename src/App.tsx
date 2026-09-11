@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { ActiveTab, Track } from './types';
 import { audioEngine } from './services/audioEngine';
-import { listTracks, subscribeToTracks, TrackMetadata, getTrackDownloadUrl } from './services/firebase';
+import { subscribeToTracks, TrackMetadata } from './services/firebase';
 import { getApiBase } from './config';
-import { getOfflineTracks } from './services/offlineStore';
+import { getOfflineTracks, fetchAndSaveOfflineTrack, isTrackOffline } from './services/offlineStore';
 import { Header } from './components/Header';
 import { PlayerBar } from './components/PlayerBar';
 import { VisualizerCanvas } from './components/VisualizerCanvas';
@@ -54,6 +54,7 @@ export default function App() {
   const [isUploadOpen, setIsUploadOpen] = useState<boolean>(false);
   const [isDownloadOpen, setIsDownloadOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [offlineTrackIds, setOfflineTrackIds] = useState<Set<string>>(new Set());
 
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
@@ -109,6 +110,19 @@ export default function App() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  useEffect(() => {
+    const checkOffline = async () => {
+      const ids = await Promise.all(
+        tracks.map(async (t) => {
+          const offline = await isTrackOffline(t.id);
+          return offline ? t.id : null;
+        })
+      );
+      setOfflineTrackIds(new Set(ids.filter(Boolean) as string[]));
+    };
+    if (tracks.length > 0) checkOffline();
+  }, [tracks]);
 
   useEffect(() => {
     audioEngine.setCallbacks(
@@ -212,6 +226,33 @@ export default function App() {
     setTracks((prev) => [newTrack, ...prev]);
     handleSelectTrack(newTrack);
     showToast(`Áudio adicionado: ${newTrack.title}`);
+  };
+
+  const downloadingRef = useRef(new Set<string>());
+
+  const handleDownloadOffline = async (track: Track) => {
+    if (downloadingRef.current.has(track.id)) return;
+    if (offlineTrackIds.has(track.id)) {
+      showToast(`"${track.title}" já está disponível offline`);
+      return;
+    }
+    downloadingRef.current.add(track.id);
+    showToast(`Baixando "${track.title}" para offline...`);
+    try {
+      const blobUrl = await fetchAndSaveOfflineTrack(track);
+      if (blobUrl) {
+        setOfflineTrackIds((prev) => new Set(prev).add(track.id));
+        setTracks((prev) =>
+          prev.map((t) => (t.id === track.id ? { ...t, audioUrl: blobUrl, syncStatus: 'offline' as const } : t))
+        );
+        showToast(`"${track.title}" salvo offline!`);
+      }
+    } catch (err) {
+      console.error('Download offline failed:', err);
+      showToast(`Erro ao baixar "${track.title}"`);
+    } finally {
+      downloadingRef.current.delete(track.id);
+    }
   };
 
   return (
@@ -328,6 +369,9 @@ export default function App() {
             isPlaying={isPlaying}
             onSelectTrack={handleSelectTrack}
             onPlayPause={handlePlayPause}
+            onAnalyzeTrack={() => {}}
+            onDownloadOffline={handleDownloadOffline}
+            offlineTrackIds={offlineTrackIds}
           />
         )}
 
@@ -365,6 +409,7 @@ export default function App() {
         volume={volume}
         isShuffle={isShuffle}
         isLoop={isLoop}
+        isOffline={currentTrack ? offlineTrackIds.has(currentTrack.id) : false}
         onPlayPause={handlePlayPause}
         onPrevious={handlePreviousTrack}
         onNext={handleNextTrack}
@@ -373,6 +418,7 @@ export default function App() {
         onToggleShuffle={() => setIsShuffle(!isShuffle)}
         onToggleLoop={() => setIsLoop(!isLoop)}
         onOpenEqualizer={() => setActiveTab('equalizer')}
+        onDownloadOffline={() => currentTrack && handleDownloadOffline(currentTrack)}
       />
 
       <UploadModal

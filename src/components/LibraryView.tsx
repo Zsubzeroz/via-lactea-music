@@ -14,7 +14,10 @@ import {
   CheckCircle2, 
   Disc,
   ArrowUpDown,
-  SearchX
+  SearchX,
+  Download,
+  DownloadCloud,
+  Check
 } from 'lucide-react';
 
 interface LibraryViewProps {
@@ -24,6 +27,8 @@ interface LibraryViewProps {
   onSelectTrack: (track: Track) => void;
   onPlayPause: () => void;
   onAnalyzeTrack: (track: Track) => void;
+  onDownloadOffline: (track: Track) => void;
+  offlineTrackIds: Set<string>;
 }
 
 export const LibraryView: React.FC<LibraryViewProps> = ({
@@ -33,6 +38,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onSelectTrack,
   onPlayPause,
   onAnalyzeTrack,
+  onDownloadOffline,
+  offlineTrackIds,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -240,6 +247,21 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
                   <div className="flex items-center gap-2 shrink-0 text-right">
                     <button
+                      onClick={() => onDownloadOffline(track)}
+                      className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
+                        offlineTrackIds.has(track.id)
+                          ? 'text-[#00ff88]'
+                          : 'text-zinc-400 hover:text-[#00ff88] active:bg-zinc-800'
+                      }`}
+                      title={offlineTrackIds.has(track.id) ? 'Disponível offline' : 'Salvar offline'}
+                    >
+                      {offlineTrackIds.has(track.id) ? (
+                        <Check className="w-3.5 h-3.5" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                    <button
                       onClick={() => onAnalyzeTrack(track)}
                       className="w-8 h-8 rounded flex items-center justify-center text-zinc-400 hover:text-amber-400 active:bg-zinc-800"
                       title="Harmonia & Cifras com IA"
@@ -315,6 +337,22 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
                   {/* Duration & AI Action */}
                   <div className="col-span-2 flex items-center justify-end gap-2 font-mono text-xs">
+                    <button
+                      onClick={() => onDownloadOffline(track)}
+                      className={`p-1 rounded transition-colors ${
+                        offlineTrackIds.has(track.id)
+                          ? 'text-[#00ff88]'
+                          : 'text-zinc-500 hover:text-[#00ff88] hover:bg-zinc-800'
+                      }`}
+                      title={offlineTrackIds.has(track.id) ? 'Disponível offline' : 'Salvar offline'}
+                    >
+                      {offlineTrackIds.has(track.id) ? (
+                        <Check className="w-3.5 h-3.5" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+
                     <button
                       onClick={() => onAnalyzeTrack(track)}
                       className="p-1 rounded text-zinc-500 hover:text-amber-400 hover:bg-zinc-800 transition-colors"
