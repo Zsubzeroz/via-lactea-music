@@ -36,7 +36,7 @@ app.use((req, res, next) => {
   if (ALLOWED_ORIGINS.includes(origin) || origin.includes('.trycloudflare.com')) {
     res.header('Access-Control-Allow-Origin', origin);
   }
-  res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS, POST');
+  res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS, POST, DELETE');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Range');
   res.header('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Content-Type');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -273,6 +273,56 @@ app.post('/api/download', async (req, res) => {
 // List categories
 app.get('/api/categories', (_req, res) => {
   res.json(CATEGORIES);
+});
+
+// ── Track Deletion API ───────────────────────────────────────────────────────
+
+app.delete('/api/tracks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Track ID is required' });
+
+    const adminApp = initFirebaseAdmin();
+    const db = getFirestore(adminApp);
+    const docRef = db.collection('tracks').doc(id);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) {
+      return res.status(404).json({ error: 'Track not found' });
+    }
+
+    const data = docSnap.data()!;
+
+    // Delete audio file from disk
+    if (data.audioKey) {
+      const audioPath = path.join(AUDIO_DIR, data.audioKey);
+      if (fs.existsSync(audioPath)) {
+        fs.unlinkSync(audioPath);
+        // Also remove parent directory if empty
+        const parentDir = path.dirname(audioPath);
+        if (fs.existsSync(parentDir) && fs.readdirSync(parentDir).length === 0) {
+          fs.rmdirSync(parentDir);
+        }
+      }
+    }
+
+    // Delete cover file from disk
+    if (data.coverUrl) {
+      const coverPath = path.join(COVERS_DIR, data.coverUrl.replace(/^\/api\/covers\//, ''));
+      if (fs.existsSync(coverPath)) {
+        fs.unlinkSync(coverPath);
+      }
+    }
+
+    // Delete Firestore document
+    await docRef.delete();
+
+    console.log(`[Delete] OK: ${id} (${data.title || 'unknown'})`);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[Delete] Error:', error.message);
+    return res.status(500).json({ error: error.message || 'Delete failed' });
+  }
 });
 
 // GitHub Repo Architecture & Sync Status API

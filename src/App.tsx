@@ -3,7 +3,7 @@ import { ActiveTab, Track } from './types';
 import { audioEngine } from './services/audioEngine';
 import { subscribeToTracks, TrackMetadata } from './services/firebase';
 import { getApiBase } from './config';
-import { getOfflineTracks, fetchAndSaveOfflineTrack, isTrackOffline } from './services/offlineStore';
+import { getOfflineTracks, fetchAndSaveOfflineTrack, isTrackOffline, softDeleteOfflineTrack, removeOfflineTrack } from './services/offlineStore';
 import { Header } from './components/Header';
 import { PlayerBar } from './components/PlayerBar';
 import { VisualizerCanvas } from './components/VisualizerCanvas';
@@ -11,7 +11,8 @@ import { EqualizerModal } from './components/EqualizerModal';
 import { LibraryView } from './components/LibraryView';
 import { UploadModal } from './components/UploadModal';
 import { DownloadModal } from './components/DownloadModal';
-import { Disc, Radio, ListMusic } from 'lucide-react';
+import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
+import { Disc, Radio, ListMusic, Trash2 } from 'lucide-react';
 
 const AlbumsView = React.lazy(() =>
   import('./components/AlbumsView').then((m) => ({ default: m.AlbumsView }))
@@ -27,7 +28,7 @@ function trackFromMeta(m: TrackMetadata): Track {
     duration: m.duration,
     audioUrl: m.audioKey ? `${getApiBase()}/api/audio/${m.audioKey}` : undefined,
     audioKey: m.audioKey,
-    coverUrl: m.coverUrl,
+    coverUrl: m.coverUrl ? `${getApiBase()}${m.coverUrl}` : undefined,
     isSynthesized: false,
     bpm: 120,
     key: 'Custom',
@@ -37,6 +38,7 @@ function trackFromMeta(m: TrackMetadata): Track {
     sizeMB: m.sizeMB,
     localPath: `audio/${m.category}/${m.title}`,
     syncStatus: 'synced',
+    deletedAt: m.deletedAt || null,
   };
 }
 
@@ -55,6 +57,8 @@ export default function App() {
   const [isDownloadOpen, setIsDownloadOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [offlineTrackIds, setOfflineTrackIds] = useState<Set<string>>(new Set());
+  const [showTrash, setShowTrash] = useState<boolean>(false);
+  const [deleteTarget, setDeleteTarget] = useState<Track | null>(null);
 
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
@@ -255,6 +259,69 @@ export default function App() {
     }
   };
 
+  const handleSoftDelete = async (track: Track) => {
+    const deletedAt = new Date().toISOString();
+    setTracks((prev) =>
+      prev.map((t) => (t.id === track.id ? { ...t, deletedAt } : t))
+    );
+    if (track.audioKey) {
+      try {
+        await fetch(`${getApiBase()}/api/tracks/${track.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deletedAt }),
+        });
+      } catch { /* Firestore soft delete failed, local state updated */ }
+    }
+    if (offlineTrackIds.has(track.id)) {
+      await softDeleteOfflineTrack(track.id).catch(() => {});
+    }
+    if (currentTrackRef.current?.id === track.id) {
+      handleNextTrackRef.current();
+    }
+    showToast(`"${track.title}" movida para a lixeira`);
+  };
+
+  const handleRestore = async (track: Track) => {
+    setTracks((prev) =>
+      prev.map((t) => (t.id === track.id ? { ...t, deletedAt: null } : t))
+    );
+    if (track.audioKey) {
+      try {
+        await fetch(`${getApiBase()}/api/tracks/${track.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deletedAt: null }),
+        });
+      } catch { /* Firestore restore failed */ }
+    }
+    showToast(`"${track.title}" restaurada!`);
+  };
+
+  const handlePermanentDelete = async (track: Track) => {
+    try {
+      await fetch(`${getApiBase()}/api/tracks/${track.id}`, { method: 'DELETE' });
+    } catch { /* server delete failed */ }
+    if (offlineTrackIds.has(track.id)) {
+      await removeOfflineTrack(track.id).catch(() => {});
+      setOfflineTrackIds((prev) => {
+        const next = new Set(prev);
+        next.delete(track.id);
+        return next;
+      });
+    }
+    setTracks((prev) => prev.filter((t) => t.id !== track.id));
+    if (currentTrackRef.current?.id === track.id) {
+      handleNextTrackRef.current();
+    }
+    setDeleteTarget(null);
+    showToast(`"${track.title}" excluída permanentemente`);
+  };
+
+  const trashCount = tracks.filter((t) => t.deletedAt).length;
+  const activeTracks = tracks.filter((t) => !t.deletedAt);
+  const trashTracks = tracks.filter((t) => t.deletedAt);
+
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans selection:bg-[#ff0055] selection:text-white">
       {toastMessage && (
@@ -271,6 +338,9 @@ export default function App() {
         onOpenDownload={() => setIsDownloadOpen(true)}
         isPlaying={isPlaying}
         activeTrackTitle={currentTrack?.title}
+        showTrash={showTrash}
+        onToggleTrash={() => setShowTrash(!showTrash)}
+        trashCount={trashCount}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 md:p-6 pb-24 sm:pb-20 flex flex-col gap-4 sm:gap-6">
@@ -330,7 +400,7 @@ export default function App() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto max-h-80 space-y-1 relative">
-                  {tracks.slice(0, 8).map((t, idx) => {
+                  {activeTracks.slice(0, 8).map((t, idx) => {
                     const isSelected = currentTrack ? t.id === currentTrack.id : false;
                     return (
                       <button
@@ -353,7 +423,7 @@ export default function App() {
                       </button>
                     );
                   })}
-                  {tracks.length > 8 && (
+                  {activeTracks.length > 8 && (
                     <div className="sticky bottom-0 left-0 right-0 h-10 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent, #111113)' }} />
                   )}
                 </div>
@@ -364,13 +434,14 @@ export default function App() {
 
         {activeTab === 'library' && (
           <LibraryView
-            tracks={tracks}
+            tracks={activeTracks}
             currentTrack={currentTrack}
             isPlaying={isPlaying}
             onSelectTrack={handleSelectTrack}
             onPlayPause={handlePlayPause}
             onAnalyzeTrack={() => {}}
             onDownloadOffline={handleDownloadOffline}
+            onDeleteTrack={handleSoftDelete}
             offlineTrackIds={offlineTrackIds}
           />
         )}
@@ -387,7 +458,7 @@ export default function App() {
             }
           >
             <AlbumsView
-              tracks={tracks}
+              tracks={activeTracks}
               currentTrack={currentTrack}
               isPlaying={isPlaying}
               onSelectTrack={handleSelectTrack}
@@ -398,6 +469,53 @@ export default function App() {
 
         {activeTab === 'equalizer' && (
           <EqualizerModal />
+        )}
+
+        {showTrash && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-zinc-800">
+              <Trash2 className="w-4 h-4 text-zinc-400" />
+              <span className="text-xs font-mono font-semibold text-zinc-300">LIXEIRA ({trashCount})</span>
+            </div>
+            {trashTracks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <Trash2 className="w-10 h-10 text-zinc-600" />
+                <p className="text-sm font-mono text-zinc-400">Nenhuma faixa na lixeira</p>
+              </div>
+            ) : (
+              <div className="bg-[#111113] border border-zinc-800 rounded-lg overflow-hidden divide-y divide-zinc-800/60">
+                {trashTracks.map((t) => (
+                  <div key={t.id} className="px-4 py-3 hover:bg-zinc-800/40 transition-colors flex items-center gap-3">
+                    {t.coverUrl ? (
+                      <img src={t.coverUrl} alt="" className="w-10 h-10 rounded object-cover bg-zinc-800 shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-zinc-800 flex items-center justify-center shrink-0">
+                        <Disc className="w-5 h-5 text-zinc-600" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-zinc-200 truncate">{t.title}</p>
+                      <p className="text-[10px] text-zinc-400 truncate">{t.artist}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleRestore(t)}
+                        className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-mono"
+                      >
+                        Restaurar
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(t)}
+                        className="px-2.5 py-1 rounded bg-red-900/50 hover:bg-red-800/50 text-red-300 text-[10px] font-mono"
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </main>
 
@@ -419,6 +537,7 @@ export default function App() {
         onToggleLoop={() => setIsLoop(!isLoop)}
         onOpenEqualizer={() => setActiveTab('equalizer')}
         onDownloadOffline={() => currentTrack && handleDownloadOffline(currentTrack)}
+        onSoftDelete={() => currentTrack && handleSoftDelete(currentTrack)}
       />
 
       <UploadModal
@@ -431,6 +550,13 @@ export default function App() {
         isOpen={isDownloadOpen}
         onClose={() => setIsDownloadOpen(false)}
         onTrackDownloaded={() => showToast('Música baixada! Atualizando biblioteca...')}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={deleteTarget !== null}
+        track={deleteTarget}
+        onConfirm={() => deleteTarget && handlePermanentDelete(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
       />
     </div>
   );

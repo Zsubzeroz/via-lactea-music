@@ -17,7 +17,8 @@ import {
   SearchX,
   Download,
   DownloadCloud,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 
 interface LibraryViewProps {
@@ -28,6 +29,7 @@ interface LibraryViewProps {
   onPlayPause: () => void;
   onAnalyzeTrack: (track: Track) => void;
   onDownloadOffline: (track: Track) => void;
+  onDeleteTrack: (track: Track) => void;
   offlineTrackIds: Set<string>;
 }
 
@@ -39,6 +41,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onPlayPause,
   onAnalyzeTrack,
   onDownloadOffline,
+  onDeleteTrack,
   offlineTrackIds,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -223,6 +226,14 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                       )}
                     </button>
 
+                    {track.coverUrl ? (
+                      <img src={track.coverUrl} alt="" className="w-9 h-9 rounded object-cover bg-zinc-800 shrink-0" />
+                    ) : (
+                      <div className="w-9 h-9 rounded bg-zinc-800 flex items-center justify-center shrink-0">
+                        <Music className="w-4 h-4 text-zinc-600" />
+                      </div>
+                    )}
+
                     <div className="min-w-0 flex-1">
                       <p className={`text-xs font-semibold truncate ${isCurrent ? 'text-white' : 'text-zinc-200'}`}>
                         {track.title}
@@ -246,6 +257,13 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 text-right">
+                    <button
+                      onClick={() => onDeleteTrack(track)}
+                      className="w-8 h-8 rounded flex items-center justify-center text-zinc-400 hover:text-red-400 active:bg-zinc-800 transition-colors"
+                      title="Mover para lixeira"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       onClick={() => onDownloadOffline(track)}
                       className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
@@ -299,6 +317,14 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                       )}
                     </button>
 
+                    {track.coverUrl ? (
+                      <img src={track.coverUrl} alt="" className="w-9 h-9 rounded object-cover bg-zinc-800 shrink-0" />
+                    ) : (
+                      <div className="w-9 h-9 rounded bg-zinc-800 flex items-center justify-center shrink-0">
+                        <Music className="w-4 h-4 text-zinc-600" />
+                      </div>
+                    )}
+
                     <div className="truncate">
                       <p className={`text-xs font-semibold truncate ${isCurrent ? 'text-white' : 'text-zinc-200'}`}>
                         {track.title}
@@ -337,6 +363,14 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
                   {/* Duration & AI Action */}
                   <div className="col-span-2 flex items-center justify-end gap-2 font-mono text-xs">
+                    <button
+                      onClick={() => onDeleteTrack(track)}
+                      className="p-1 rounded text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors"
+                      title="Mover para lixeira"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+
                     <button
                       onClick={() => onDownloadOffline(track)}
                       className={`p-1 rounded transition-colors ${

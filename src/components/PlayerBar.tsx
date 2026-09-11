@@ -15,7 +15,9 @@ import {
   HardDrive,
   FileAudio,
   Download,
-  Check
+  Check,
+  Trash2,
+  Music
 } from 'lucide-react';
 
 interface PlayerBarProps {
@@ -36,6 +38,7 @@ interface PlayerBarProps {
   onToggleLoop: () => void;
   onOpenEqualizer: () => void;
   onDownloadOffline: () => void;
+  onSoftDelete: () => void;
 }
 
 export const PlayerBar: React.FC<PlayerBarProps> = ({
@@ -56,6 +59,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   onToggleLoop,
   onOpenEqualizer,
   onDownloadOffline,
+  onSoftDelete,
 }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [prevVolume, setPrevVolume] = useState(volume);
@@ -109,8 +113,12 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
       <div className="flex sm:hidden items-center justify-between gap-2">
         {/* Track Info (Click opens Equalizer or shows info) */}
         <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-          <div className="w-9 h-9 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0 relative">
-            <FileAudio className={`w-5 h-5 ${isPlaying ? 'text-[#ff0055]' : 'text-zinc-500'}`} />
+          <div className="w-9 h-9 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0 relative overflow-hidden">
+            {currentTrack?.coverUrl ? (
+              <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <Music className={`w-5 h-5 ${isPlaying ? 'text-[#ff0055]' : 'text-zinc-500'}`} />
+            )}
             {isPlaying && (
               <span className="absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[#00ff88]" />
             )}
@@ -133,6 +141,14 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
 
         {/* Mobile Action Controls */}
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onSoftDelete}
+            className="w-9 h-9 rounded flex items-center justify-center text-zinc-400 hover:text-red-400 active:bg-zinc-800 transition-colors"
+            title="Mover para lixeira"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+
           <button
             onClick={onDownloadOffline}
             className={`w-9 h-9 rounded flex items-center justify-center transition-colors ${
@@ -188,7 +204,11 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         {/* Track Metadata (Left) */}
         <div className="flex items-center gap-3 min-w-[220px] max-w-sm">
           <div className="w-11 h-11 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center relative overflow-hidden shrink-0">
-            <FileAudio className={`w-6 h-6 ${isPlaying ? 'text-[#ff0055]' : 'text-zinc-500'}`} />
+            {currentTrack?.coverUrl ? (
+              <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <Music className={`w-6 h-6 ${isPlaying ? 'text-[#ff0055]' : 'text-zinc-500'}`} />
+            )}
             {isPlaying && (
               <span className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-ping" />
             )}
@@ -297,6 +317,14 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
 
         {/* Volume & Studio Tools (Right) */}
         <div className="flex items-center gap-3 min-w-[200px] justify-end">
+          <button
+            onClick={onSoftDelete}
+            className="p-1.5 rounded text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors"
+            title="Mover para lixeira"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+
           <button
             onClick={onDownloadOffline}
             className={`p-1.5 rounded transition-colors ${

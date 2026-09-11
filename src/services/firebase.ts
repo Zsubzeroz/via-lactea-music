@@ -28,6 +28,7 @@ export interface TrackMetadata {
   coverKey?: string;
   coverUrl?: string;
   createdAt: string;
+  deletedAt?: string | null;
 }
 
 export async function listTracks(): Promise<TrackMetadata[]> {

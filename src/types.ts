@@ -20,6 +20,7 @@ export interface Track {
   sizeMB: number;
   localPath: string; // e.g. 'Documents/Musica/Piano/Clássico SnapTube/Chopin_Nocturne.mp3'
   syncStatus: 'synced' | 'cached' | 'uploading' | 'offline';
+  deletedAt?: string | null;
   lyrics?: string;
   chords?: string[];
 }

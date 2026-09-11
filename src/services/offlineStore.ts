@@ -110,3 +110,37 @@ export async function fetchAndSaveOfflineTrack(track: Track): Promise<string | n
   await saveOfflineTrack(track, blob);
   return URL.createObjectURL(blob);
 }
+
+export async function softDeleteOfflineTrack(trackId: string): Promise<void> {
+  if (!('indexedDB' in window)) return;
+  const db = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const getReq = store.get(trackId);
+    getReq.onsuccess = () => {
+      const row = getReq.result;
+      if (row) {
+        row.deletedAt = new Date().toISOString();
+        const putReq = store.put(row);
+        putReq.onsuccess = () => resolve();
+        putReq.onerror = () => reject(putReq.error || new Error('Failed to soft delete'));
+      } else {
+        resolve();
+      }
+    };
+    getReq.onerror = () => reject(getReq.error || new Error('Failed to read track for soft delete'));
+  });
+}
+
+export async function removeOfflineTrack(trackId: string): Promise<void> {
+  if (!('indexedDB' in window)) return;
+  const db = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.delete(trackId);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error || new Error('Failed to remove track'));
+  });
+}

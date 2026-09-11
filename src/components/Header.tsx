@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActiveTab } from '../types';
-import { Play, Sliders, Music2, Upload, Download, Radio, Disc3 } from 'lucide-react';
+import { Play, Sliders, Music2, Upload, Download, Radio, Disc3, Trash2 } from 'lucide-react';
 
 interface HeaderProps {
   activeTab: ActiveTab;
@@ -9,6 +9,9 @@ interface HeaderProps {
   onOpenDownload: () => void;
   isPlaying: boolean;
   activeTrackTitle?: string;
+  showTrash: boolean;
+  onToggleTrash: () => void;
+  trashCount: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,6 +21,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenDownload,
   isPlaying,
   activeTrackTitle,
+  showTrash,
+  onToggleTrash,
+  trashCount,
 }) => {
   return (
     <header className="border-b border-zinc-800 bg-[#0c0c0e] sticky top-0 z-40">
@@ -51,6 +57,22 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Upload className="w-3.5 h-3.5 text-zinc-400" />
             <span className="hidden sm:inline">Upload</span>
+          </button>
+          <button
+            onClick={onToggleTrash}
+            className={`px-2.5 sm:px-3 py-1.5 rounded-md border text-xs font-medium flex items-center gap-1.5 transition-colors relative ${
+              showTrash
+                ? 'border-zinc-500 bg-zinc-700 text-white'
+                : 'border-zinc-700 bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200'
+            }`}
+          >
+            <Trash2 className="w-3.5 h-3.5 text-zinc-400" />
+            <span className="hidden sm:inline">Lixeira</span>
+            {trashCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#ff0055] text-white text-[9px] font-bold flex items-center justify-center">
+                {trashCount}
+              </span>
+            )}
           </button>
         </div>
       </div>
