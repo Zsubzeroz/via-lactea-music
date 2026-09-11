@@ -129,6 +129,46 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ── Music Search API (ytsearch via yt-dlp) ──────────────────────────────────
+
+app.get('/api/search', async (req, res) => {
+  try {
+    const q = (req.query.q as string || '').trim();
+    if (!q) return res.status(400).json({ error: 'Query parameter q is required' });
+
+    const result = await execFileAsync('yt-dlp', [
+      '--remote-components', 'ejs:github',
+      '--js-runtimes', 'node',
+      `ytsearch8:${q}`,
+      '--dump-json',
+      '--no-playlist',
+      '--flat-playlist',
+    ], { timeout: 15000 });
+
+    const lines = result.stdout.trim().split('\n').filter(Boolean);
+    const results = lines.map((line) => {
+      try {
+        const data = JSON.parse(line);
+        return {
+          id: data.id,
+          title: data.title || 'Unknown',
+          artist: data.uploader || data.channel || 'Unknown',
+          duration: data.duration || 0,
+          thumbnail: data.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${data.id}/hqdefault.jpg`,
+          url: data.url || data.webpage_url || `https://www.youtube.com/watch?v=${data.id}`,
+        };
+      } catch {
+        return null;
+      }
+    }).filter(Boolean);
+
+    return res.json({ results });
+  } catch (error: any) {
+    console.error('[Search] Error:', error.message);
+    return res.status(500).json({ error: error.message || 'Search failed', results: [] });
+  }
+});
+
 // ── Music Download API ────────────────────────────────────────────────────────
 
 const CATEGORIES = [

@@ -1,11 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getApiBase } from '../config';
-import { Download, X, Check, Loader2, AlertCircle, Music } from 'lucide-react';
+import { Download, X, Check, Loader2, AlertCircle, Music, Search, Link as LinkIcon } from 'lucide-react';
 
 interface DownloadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTrackDownloaded?: () => void;
+}
+
+interface SearchResult {
+  id: string;
+  title: string;
+  artist: string;
+  duration: number;
+  thumbnail: string;
+  url: string;
 }
 
 interface DownloadedTrack {
@@ -27,6 +36,13 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
   onClose,
   onTrackDownloaded,
 }) => {
+  const [tab, setTab] = useState<'search' | 'url'>('search');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   const [url, setUrl] = useState('');
   const [category, setCategory] = useState('Chamou atenção');
   const [downloading, setDownloading] = useState(false);
@@ -36,41 +52,56 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setTab('search');
+      setSearchQuery('');
+      setSearchResults([]);
+      setSearching(false);
+      setSearchError(null);
       setUrl('');
       setCategory('Chamou atenção');
       setDownloading(false);
       setProgress('');
       setError(null);
       setResult(null);
+      setTimeout(() => searchInputRef.current?.focus(), 100);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleDownload = async () => {
-    if (!url.trim()) {
-      setError('Cole uma URL válida');
-      return;
+  const handleSearch = async () => {
+    if (!searchQuery.trim() || searching) return;
+    setSearching(true);
+    setSearchError(null);
+    setSearchResults([]);
+    try {
+      const res = await fetch(`${getApiBase()}/api/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Busca falhou');
+      setSearchResults(data.results || []);
+      if ((data.results || []).length === 0) {
+        setSearchError('Nenhum resultado encontrado');
+      }
+    } catch (err: any) {
+      setSearchError(err.message || 'Erro ao buscar música');
+    } finally {
+      setSearching(false);
     }
+  };
 
+  const handleDownloadFromUrl = async (downloadUrl: string) => {
     setDownloading(true);
     setError(null);
     setResult(null);
-    setProgress('Buscando informações do vídeo...');
-
+    setProgress('Baixando música...');
     try {
       const response = await fetch(`${getApiBase()}/api/download`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim(), category }),
+        body: JSON.stringify({ url: downloadUrl, category }),
       });
-
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Falha no download');
-      }
-
+      if (!response.ok) throw new Error(data.error || 'Falha no download');
       setResult({
         id: data.track.id,
         title: data.track.title,
@@ -78,7 +109,6 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
         category: data.track.category,
         sizeMB: data.track.sizeMB,
       });
-
       onTrackDownloaded?.();
     } catch (err: any) {
       setError(err.message || 'Erro ao baixar música');
@@ -88,9 +118,29 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
     }
   };
 
+  const handleDownloadFromSearch = (searchResult: SearchResult) => {
+    handleDownloadFromUrl(searchResult.url);
+  };
+
+  const handleDownloadFromUrlInput = () => {
+    if (!url.trim()) {
+      setError('Cole uma URL válida');
+      return;
+    }
+    handleDownloadFromUrl(url.trim());
+  };
+
+  const formatDuration = (secs: number) => {
+    if (!secs) return '--:--';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-      <div className="bg-[#111113] border border-zinc-800 rounded-lg p-6 max-w-lg w-full flex flex-col gap-4 relative shadow-2xl">
+      <div className="bg-[#111113] border border-zinc-800 rounded-lg p-6 max-w-lg w-full flex flex-col gap-4 relative shadow-2xl max-h-[90vh] overflow-hidden">
+        {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
           <div className="flex items-center gap-2">
             <Download className="w-4 h-4 text-[#00ff88]" />
@@ -103,21 +153,30 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
           </button>
         </div>
 
-        <p className="text-xs text-zinc-400 font-mono">
-          Cole uma URL do YouTube, SoundCloud ou outra plataforma. O áudio será baixado automaticamente.
-        </p>
-
-        {/* URL Input */}
-        <div>
-          <label className="text-xs font-mono text-zinc-400 block mb-1">URL da Música:</label>
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://youtube.com/watch?v=..."
-            disabled={downloading}
-            className="w-full bg-[#0a0a0c] border border-zinc-800 rounded p-2.5 text-xs font-mono text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
-          />
+        {/* Tab Toggle */}
+        <div className="flex gap-1 bg-[#0a0a0c] p-1 rounded-lg border border-zinc-800">
+          <button
+            onClick={() => setTab('search')}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-colors ${
+              tab === 'search'
+                ? 'bg-zinc-800 text-white'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            <Search className="w-3.5 h-3.5" />
+            Buscar
+          </button>
+          <button
+            onClick={() => setTab('url')}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-colors ${
+              tab === 'url'
+                ? 'bg-zinc-800 text-white'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            <LinkIcon className="w-3.5 h-3.5" />
+            Colar URL
+          </button>
         </div>
 
         {/* Category selector */}
@@ -134,6 +193,94 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
             ))}
           </select>
         </div>
+
+        {/* Search Tab */}
+        {tab === 'search' && (
+          <>
+            <div className="flex gap-2">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="Buscar música no YouTube..."
+                disabled={searching || downloading}
+                className="flex-1 bg-[#0a0a0c] border border-zinc-800 rounded p-2.5 text-xs font-mono text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+              />
+              <button
+                onClick={handleSearch}
+                disabled={searching || !searchQuery.trim() || downloading}
+                className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+              >
+                {searching ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Search className="w-3.5 h-3.5" />
+                )}
+                Buscar
+              </button>
+            </div>
+
+            {/* Search Results */}
+            {searchResults.length > 0 && (
+              <div className="flex flex-col gap-1 overflow-y-auto max-h-60 divide-y divide-zinc-800/60">
+                {searchResults.map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => handleDownloadFromSearch(r)}
+                    disabled={downloading}
+                    className="flex items-center gap-3 p-2 rounded hover:bg-zinc-800/60 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <img
+                      src={r.thumbnail}
+                      alt=""
+                      className="w-12 h-9 rounded object-cover bg-zinc-800 shrink-0"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-zinc-200 truncate">{r.title}</p>
+                      <p className="text-[10px] text-zinc-400 truncate">{r.artist}</p>
+                    </div>
+                    <span className="text-[10px] font-mono text-zinc-500 shrink-0">
+                      {formatDuration(r.duration)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {searchError && !searching && (
+              <div className="bg-red-950/30 border border-red-800/50 rounded-lg p-3 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                <span className="text-xs font-mono text-red-300">{searchError}</span>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* URL Tab */}
+        {tab === 'url' && (
+          <>
+            <p className="text-xs text-zinc-400 font-mono">
+              Cole uma URL do YouTube, SoundCloud ou outra plataforma. O áudio será baixado automaticamente.
+            </p>
+            <div>
+              <label className="text-xs font-mono text-zinc-400 block mb-1">URL da Música:</label>
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleDownloadFromUrlInput()}
+                placeholder="https://youtube.com/watch?v=..."
+                disabled={downloading}
+                className="w-full bg-[#0a0a0c] border border-zinc-800 rounded p-2.5 text-xs font-mono text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+              />
+            </div>
+          </>
+        )}
 
         {/* Downloading Status */}
         {downloading && (
@@ -186,9 +333,9 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
           >
             {result ? 'Fechar' : 'Cancelar'}
           </button>
-          {!result && !downloading && (
+          {!result && !downloading && tab === 'url' && (
             <button
-              onClick={handleDownload}
+              onClick={handleDownloadFromUrlInput}
               disabled={!url.trim()}
               className="px-3 py-1.5 rounded bg-[#00ff88] hover:bg-[#00ff88]/90 text-black font-semibold flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -202,6 +349,8 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
                 setUrl('');
                 setResult(null);
                 setError(null);
+                setSearchResults([]);
+                setSearchQuery('');
               }}
               className="px-3 py-1.5 rounded bg-[#00ff88] hover:bg-[#00ff88]/90 text-black font-semibold flex items-center gap-1.5"
             >
