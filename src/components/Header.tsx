@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActiveTab } from '../types';
-import { Play, Sliders, Music2, Upload, Download, Radio, Disc3, Trash2 } from 'lucide-react';
+import { Play, Sliders, Music2, Upload, Download, Radio, Disc3, Trash2, FolderOpen } from 'lucide-react';
 
 interface HeaderProps {
   activeTab: ActiveTab;
@@ -125,6 +125,18 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Sliders className="w-3.5 h-3.5" />
           <span>Equalizador</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('playlists')}
+          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+            activeTab === 'playlists'
+              ? 'bg-zinc-700 text-white'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
+          }`}
+        >
+          <FolderOpen className="w-3.5 h-3.5" />
+          <span>Playlists</span>
         </button>
       </div>
     </header>

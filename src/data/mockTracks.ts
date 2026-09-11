@@ -1,6 +1,6 @@
-import { Playlist, Track } from '../types';
+import { CategoryChip, Track } from '../types';
 
-export const PLAYLIST_CATEGORIES: Playlist[] = [
+export const PLAYLIST_CATEGORIES: CategoryChip[] = [
   {
     id: 'piano',
     name: 'Piano Clássico & Obras',

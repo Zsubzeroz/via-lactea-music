@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
-import { ActiveTab, Track } from './types';
+import { ActiveTab, Track, Playlist } from './types';
 import { audioEngine } from './services/audioEngine';
 import { subscribeToTracks, TrackMetadata } from './services/firebase';
 import { getApiBase } from './config';
@@ -12,6 +12,7 @@ import { LibraryView } from './components/LibraryView';
 import { UploadModal } from './components/UploadModal';
 import { DownloadModal } from './components/DownloadModal';
 import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
+import { PlaylistsView } from './components/PlaylistsView';
 import { Disc, Radio, ListMusic, Trash2 } from 'lucide-react';
 
 const AlbumsView = React.lazy(() =>
@@ -65,6 +66,7 @@ export default function App() {
   const [deleteTarget, setDeleteTarget] = useState<Track | null>(null);
   const [queue, setQueue] = useState<Track[]>([]);
   const [queueIndex, setQueueIndex] = useState<number>(-1);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
 
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
@@ -128,6 +130,54 @@ export default function App() {
       }
     } catch {}
   }, []);
+
+  // Fetch playlists from server
+  useEffect(() => {
+    fetch(`${getApiBase()}/api/playlists`)
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setPlaylists(data); })
+      .catch(() => {});
+  }, []);
+
+  const handleCreatePlaylist = async (name: string) => {
+    const res = await fetch(`${getApiBase()}/api/playlists`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error);
+    }
+    const data = await res.json();
+    setPlaylists((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+    showToast(`Playlist "${name}" criada!`);
+  };
+
+  const handleRenamePlaylist = async (id: string, name: string) => {
+    const res = await fetch(`${getApiBase()}/api/playlists/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error);
+    }
+    const data = await res.json();
+    setPlaylists((prev) => prev.map((p) => (p.id === id ? { ...p, name: data.name, folderName: data.folderName } : p)));
+    showToast(`Playlist renomeada!`);
+  };
+
+  const handleDeletePlaylist = async (id: string) => {
+    const res = await fetch(`${getApiBase()}/api/playlists/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error);
+    }
+    setPlaylists((prev) => prev.filter((p) => p.id !== id));
+    showToast(`Playlist excluída!`);
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -533,6 +583,16 @@ export default function App() {
           <EqualizerModal />
         )}
 
+        {activeTab === 'playlists' && (
+          <PlaylistsView
+            playlists={playlists}
+            tracks={tracks}
+            onCreate={handleCreatePlaylist}
+            onRename={handleRenamePlaylist}
+            onDelete={handleDeletePlaylist}
+          />
+        )}
+
         {showTrash && (
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2 pb-3 border-b border-zinc-800">
@@ -606,12 +666,14 @@ export default function App() {
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
         onAddTrack={handleAddLocalTrack}
+        playlists={playlists}
       />
 
       <DownloadModal
         isOpen={isDownloadOpen}
         onClose={() => setIsDownloadOpen(false)}
         onTrackDownloaded={() => showToast('Música baixada! Atualizando biblioteca...')}
+        playlists={playlists}
       />
 
       <ConfirmDeleteModal

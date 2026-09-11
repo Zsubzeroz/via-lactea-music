@@ -270,9 +270,157 @@ app.post('/api/download', async (req, res) => {
   }
 });
 
-// List categories
-app.get('/api/categories', (_req, res) => {
-  res.json(CATEGORIES);
+// List categories (dynamic: playlists + legacy hardcoded)
+app.get('/api/categories', async (_req, res) => {
+  try {
+    const adminApp = initFirebaseAdmin();
+    const db = getFirestore(adminApp);
+    const snapshot = await db.collection('playlists').orderBy('name').get();
+    const playlistNames = snapshot.docs.map((doc) => doc.data().name as string);
+    const all = [...new Set([...playlistNames, ...CATEGORIES])];
+    res.json(all);
+  } catch {
+    res.json(CATEGORIES);
+  }
+});
+
+// ── Playlists CRUD ──────────────────────────────────────────────────────────
+
+function sanitizeFolderName(name: string): string {
+  return name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '').substring(0, 80);
+}
+
+app.get('/api/playlists', async (_req, res) => {
+  try {
+    const adminApp = initFirebaseAdmin();
+    const db = getFirestore(adminApp);
+    const snapshot = await db.collection('playlists').orderBy('name').get();
+    const playlists = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    return res.json(playlists);
+  } catch (error: any) {
+    console.error('[Playlists] List error:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/playlists', async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
+
+    const folderName = sanitizeFolderName(name.trim());
+    if (!folderName) return res.status(400).json({ error: 'Invalid folder name' });
+
+    const adminApp = initFirebaseAdmin();
+    const db = getFirestore(adminApp);
+
+    // Check if folder already exists in Firestore
+    const existing = await db.collection('playlists').where('folderName', '==', folderName).get();
+    if (!existing.empty) {
+      return res.status(409).json({ error: 'Playlist with this name already exists' });
+    }
+
+    // Create folder on disk
+    const folderPath = path.join(AUDIO_DIR, folderName);
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath, { recursive: true });
+    }
+
+    // Save to Firestore
+    const docRef = await db.collection('playlists').add({
+      name: name.trim(),
+      folderName,
+      trackCount: 0,
+      createdAt: new Date().toISOString(),
+    });
+
+    console.log(`[Playlists] Created: ${name.trim()} (${folderName})`);
+    return res.json({ id: docRef.id, name: name.trim(), folderName, trackCount: 0 });
+  } catch (error: any) {
+    console.error('[Playlists] Create error:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/playlists/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!id) return res.status(400).json({ error: 'Playlist ID is required' });
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
+
+    const adminApp = initFirebaseAdmin();
+    const db = getFirestore(adminApp);
+    const docRef = db.collection('playlists').doc(id);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) return res.status(404).json({ error: 'Playlist not found' });
+
+    const oldData = docSnap.data()!;
+    const oldFolderName = oldData.folderName;
+    const newFolderName = sanitizeFolderName(name.trim());
+
+    // Rename folder on disk if folderName changes
+    if (newFolderName !== oldFolderName) {
+      const oldPath = path.join(AUDIO_DIR, oldFolderName);
+      const newPath = path.join(AUDIO_DIR, newFolderName);
+      if (fs.existsSync(oldPath) && !fs.existsSync(newPath)) {
+        fs.renameSync(oldPath, newPath);
+      }
+      // Update all tracks in this category
+      const tracksSnap = await db.collection('tracks').where('category', '==', oldData.name).get();
+      const batch = db.batch();
+      tracksSnap.docs.forEach((trackDoc) => {
+        const trackData = trackDoc.data();
+        const newAudioKey = trackData.audioKey?.replace(`${oldFolderName}/`, `${newFolderName}/`);
+        batch.update(trackDoc.ref, { category: name.trim(), audioKey: newAudioKey });
+      });
+      await batch.commit();
+    }
+
+    await docRef.update({ name: name.trim(), folderName: newFolderName });
+    console.log(`[Playlists] Renamed: ${oldData.name} → ${name.trim()}`);
+    return res.json({ id, name: name.trim(), folderName: newFolderName });
+  } catch (error: any) {
+    console.error('[Playlists] Rename error:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/playlists/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Playlist ID is required' });
+
+    const adminApp = initFirebaseAdmin();
+    const db = getFirestore(adminApp);
+    const docRef = db.collection('playlists').doc(id);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) return res.status(404).json({ error: 'Playlist not found' });
+
+    const data = docSnap.data()!;
+    const folderPath = path.join(AUDIO_DIR, data.folderName);
+
+    // Check if folder has tracks
+    if (fs.existsSync(folderPath)) {
+      const items = fs.readdirSync(folderPath);
+      if (items.length > 0) {
+        return res.status(409).json({ error: 'Cannot delete playlist with tracks. Move or delete tracks first.' });
+      }
+      fs.rmdirSync(folderPath);
+    }
+
+    await docRef.delete();
+    console.log(`[Playlists] Deleted: ${data.name}`);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[Playlists] Delete error:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
 });
 
 // ── Track Deletion API ───────────────────────────────────────────────────────

@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getApiBase } from '../config';
+import { Playlist } from '../types';
 import { Download, X, Check, Loader2, AlertCircle, Music, Search, Link as LinkIcon } from 'lucide-react';
 
 interface DownloadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTrackDownloaded?: () => void;
+  playlists?: Playlist[];
 }
 
 interface SearchResult {
@@ -35,6 +37,7 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
   isOpen,
   onClose,
   onTrackDownloaded,
+  playlists = [],
 }) => {
   const [tab, setTab] = useState<'search' | 'url'>('search');
   const [searchQuery, setSearchQuery] = useState('');
@@ -188,8 +191,8 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
             disabled={downloading}
             className="w-full bg-[#0a0a0c] border border-zinc-800 rounded p-2.5 text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
           >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
+            {playlists.map((p) => (
+              <option key={p.id} value={p.name}>{p.name}</option>
             ))}
           </select>
         </div>

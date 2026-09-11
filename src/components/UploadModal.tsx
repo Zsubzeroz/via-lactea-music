@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Track } from '../types';
+import { Track, Playlist } from '../types';
 import { Upload, FileAudio, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { convertAudio, getOptimalFormat, ConversionResult } from '../services/audioConverter';
 import { saveOfflineTrack } from '../services/offlineStore';
@@ -9,6 +9,7 @@ interface UploadModalProps {
   onClose: () => void;
   onAddTrack: (track: Track) => void;
   onNotify?: (msg: string) => void;
+  playlists?: Playlist[];
 }
 
 export const UploadModal: React.FC<UploadModalProps> = ({
@@ -16,6 +17,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   onClose,
   onAddTrack,
   onNotify,
+  playlists = [],
 }) => {
   const [dragOver, setDragOver] = useState(false);
   const [trackCategory, setTrackCategory] = useState('Chamou atenção');
@@ -130,12 +132,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({
             onChange={(e) => setTrackCategory(e.target.value)}
             className="w-full bg-[#0a0a0c] border border-zinc-800 rounded p-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500"
           >
-            <option value="Piano">Piano / Clássico</option>
-            <option value="Rap Nacional">Rap Nacional</option>
-            <option value="Poesia Acústica">Poesia Acústica</option>
-            <option value="Música Eletrônica">Música Eletrônica</option>
-            <option value="Treino">Treino / Phonk</option>
-            <option value="Chamou atenção">Chamou atenção / Avulso</option>
+            {playlists.map((p) => (
+              <option key={p.id} value={p.name}>{p.name}</option>
+            ))}
           </select>
         </div>
 

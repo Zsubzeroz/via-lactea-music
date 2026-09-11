@@ -29,6 +29,14 @@ export interface Playlist {
   id: string;
   name: string;
   folderName: string;
+  trackCount: number;
+  createdAt: string;
+}
+
+export interface CategoryChip {
+  id: string;
+  name: string;
+  folderName: string;
   description: string;
   trackCount: number;
   colorAccent: string;
@@ -47,4 +55,4 @@ export interface EQPreset {
   gains: number[]; // 10 bands
 }
 
-export type ActiveTab = 'player' | 'library' | 'albums' | 'equalizer';
+export type ActiveTab = 'player' | 'library' | 'albums' | 'equalizer' | 'playlists';
