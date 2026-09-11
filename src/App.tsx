@@ -116,6 +116,19 @@ export default function App() {
     };
   }, []);
 
+  // Restore EQ settings from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('via-lactea-eq');
+      if (raw) {
+        const { gains } = JSON.parse(raw);
+        if (Array.isArray(gains) && gains.length === 10) {
+          gains.forEach((g: number, i: number) => audioEngine.setEQBandGain(i, g));
+        }
+      }
+    } catch {}
+  }, []);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -406,8 +419,12 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-4 sm:gap-5">
-                  <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-lg bg-[#0a0a0c] border border-zinc-800 flex items-center justify-center shrink-0">
-                    <Disc className={`w-12 h-12 sm:w-14 sm:h-14 text-zinc-600 transition-transform duration-1000 ${isPlaying ? 'rotate-[360deg] text-[#ff0055]' : ''}`} />
+                  <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-lg bg-[#0a0a0c] border border-zinc-800 flex items-center justify-center shrink-0 overflow-hidden relative">
+                    {currentTrack.coverUrl ? (
+                      <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <Disc className={`w-12 h-12 sm:w-14 sm:h-14 text-zinc-600 transition-transform duration-1000 ${isPlaying ? 'rotate-[360deg] text-[#ff0055]' : ''}`} />
+                    )}
                   </div>
 
                   <div className="flex-1 min-w-0">

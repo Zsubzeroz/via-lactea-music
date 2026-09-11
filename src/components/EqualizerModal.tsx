@@ -39,9 +39,31 @@ function buildCurvePath(gains: number[]): string {
   return d;
 }
 
+const EQ_STORAGE_KEY = 'via-lactea-eq';
+
+function loadEQSettings(): { gains: number[]; presetName: string } {
+  try {
+    const raw = localStorage.getItem(EQ_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.gains) && parsed.gains.length === 10) {
+        return { gains: parsed.gains, presetName: parsed.presetName || 'Flat (Direto de Estúdio)' };
+      }
+    }
+  } catch {}
+  return { gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], presetName: 'Flat (Direto de Estúdio)' };
+}
+
+function saveEQSettings(gains: number[], presetName: string) {
+  try {
+    localStorage.setItem(EQ_STORAGE_KEY, JSON.stringify({ gains, presetName }));
+  } catch {}
+}
+
 export const EqualizerModal: React.FC<EqualizerViewProps> = ({ onClose }) => {
-  const [currentGains, setCurrentGains] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-  const [activePresetName, setActivePresetName] = useState<string>('Flat (Direto de Estúdio)');
+  const saved = loadEQSettings();
+  const [currentGains, setCurrentGains] = useState<number[]>(saved.gains);
+  const [activePresetName, setActivePresetName] = useState<string>(saved.presetName);
   const svgRef = useRef<SVGSVGElement>(null);
   const draggingRef = useRef<number | null>(null);
 
@@ -55,18 +77,21 @@ export const EqualizerModal: React.FC<EqualizerViewProps> = ({ onClose }) => {
     updated[index] = newGain;
     applyGains(updated);
     setActivePresetName('Customizado');
+    saveEQSettings(updated, 'Customizado');
   };
 
   const applyPreset = (preset: EQPreset) => {
     setCurrentGains([...preset.gains]);
     setActivePresetName(preset.name);
     audioEngine.applyEQPreset(preset);
+    saveEQSettings([...preset.gains], preset.name);
   };
 
   const resetFlat = () => {
     const flat = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     applyGains(flat);
     setActivePresetName('Flat (Direto de Estúdio)');
+    saveEQSettings(flat, 'Flat (Direto de Estúdio)');
   };
 
   // Drag handlers for SVG curve nodes
@@ -116,6 +141,7 @@ export const EqualizerModal: React.FC<EqualizerViewProps> = ({ onClose }) => {
     updated[draggingRef.current] = newGain;
     applyGains(updated);
     setActivePresetName('Customizado');
+    saveEQSettings(updated, 'Customizado');
   };
 
   const onPointerUp = () => {
