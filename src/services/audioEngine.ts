@@ -54,6 +54,7 @@ class AudioEngineService {
   private startTime = 0;
   private pauseOffset = 0;
   private isPlayingState = false;
+  private playGeneration = 0;
 
   // Callbacks
   private onTimeUpdateCallback?: (time: number, duration: number) => void;
@@ -146,24 +147,30 @@ class AudioEngineService {
     this.currentTrack = track;
     this.stopCurrent();
 
+    if (!navigator.userActivation?.hasBeenActive) {
+      console.warn('Playback blocked: no user activation');
+      return;
+    }
+
     // Build audio URL from audioKey if not already set
     if (track.audioKey && !track.audioUrl) {
       track.audioUrl = `${getApiBase()}/api/audio/${track.audioKey}`;
     }
 
     if (track.audioUrl && !track.isSynthesized) {
-      // Play real audio file (from R2 signed URL)
       this.isSynthPlaying = false;
       if (this.audioElement) {
         this.audioElement.src = track.audioUrl;
         this.audioElement.currentTime = startFromSeconds;
+        const generation = ++this.playGeneration;
         this.audioElement.play().catch((err) => {
-          console.warn('Audio play error, falling back to synth:', err);
-          this.startProceduralSynth(track, startFromSeconds);
+          if (this.playGeneration !== generation) return;
+          console.error('Audio play error:', err);
+          this.isPlayingState = false;
+          if (this.onStateChangeCallback) this.onStateChangeCallback(false);
         });
       }
     } else {
-      // Play procedural audio synthesis
       this.startProceduralSynth(track, startFromSeconds);
     }
 
@@ -187,6 +194,10 @@ class AudioEngineService {
   public resume() {
     this.initContext();
     if (this.currentTrack) {
+      if (!navigator.userActivation?.hasBeenActive) {
+        console.warn('Resume blocked: no user activation');
+        return;
+      }
       if (this.isSynthPlaying || this.currentTrack.isSynthesized) {
         this.startProceduralSynth(this.currentTrack, this.pauseOffset);
       } else if (this.audioElement) {

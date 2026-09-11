@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { ActiveTab, Track } from './types';
 import { audioEngine } from './services/audioEngine';
 import { listTracks, subscribeToTracks, TrackMetadata, getTrackDownloadUrl } from './services/firebase';
@@ -55,6 +55,15 @@ export default function App() {
   const [isDownloadOpen, setIsDownloadOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
+  const currentTrackRef = useRef(currentTrack);
+  currentTrackRef.current = currentTrack;
+  const isLoopRef = useRef(isLoop);
+  isLoopRef.current = isLoop;
+  const isShuffleRef = useRef(isShuffle);
+  isShuffleRef.current = isShuffle;
+
   useEffect(() => {
     let active = true;
 
@@ -85,8 +94,8 @@ export default function App() {
         return Array.from(unique.values());
       });
       if (!isPlaying) {
-        setCurrentTrack(converted[0]);
-        setDuration(converted[0].duration);
+        setCurrentTrack((prev) => prev ?? converted[0]);
+        setDuration((prev) => prev || converted[0].duration);
       }
     });
 
@@ -113,10 +122,10 @@ export default function App() {
         setIsPlaying(playing);
       },
       () => {
-        handleNextTrack();
+        handleNextTrackRef.current();
       }
     );
-  }, [tracks, currentTrack, isLoop, isShuffle]);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -127,23 +136,23 @@ export default function App() {
         e.preventDefault();
         handlePlayPause();
       } else if (e.code === 'ArrowRight') {
-        audioEngine.seek(Math.min(duration, currentTime + 5));
+        audioEngine.seek(Math.min(durationRef.current, currentTimeRef.current + 5));
       } else if (e.code === 'ArrowLeft') {
-        audioEngine.seek(Math.max(0, currentTime - 5));
+        audioEngine.seek(Math.max(0, currentTimeRef.current - 5));
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, currentTime, duration]);
+  }, []);
 
   const handlePlayPause = () => {
-    if (isPlaying) {
+    if (isPlayingRef.current) {
       audioEngine.pause();
     } else {
       if (currentTime > 0) {
         audioEngine.resume();
-      } else if (currentTrack) {
-        audioEngine.playTrack(currentTrack);
+      } else if (currentTrackRef.current) {
+        audioEngine.playTrack(currentTrackRef.current);
       }
     }
   };
@@ -157,20 +166,31 @@ export default function App() {
   };
 
   const handleNextTrack = useCallback(() => {
-    if (!currentTrack) return;
-    if (isLoop) {
-      audioEngine.playTrack(currentTrack, 0);
+    if (!currentTrackRef.current) return;
+    if (isLoopRef.current) {
+      audioEngine.playTrack(currentTrackRef.current, 0);
       return;
     }
-    const currentIndex = tracks.findIndex((t) => t.id === currentTrack.id);
+    const currentIndex = tracks.findIndex((t) => t.id === currentTrackRef.current!.id);
     let nextIndex = 0;
-    if (isShuffle) {
+    if (isShuffleRef.current) {
       nextIndex = Math.floor(Math.random() * tracks.length);
     } else {
       nextIndex = (currentIndex + 1) % tracks.length;
     }
     handleSelectTrack(tracks[nextIndex]);
-  }, [tracks, currentTrack, isLoop, isShuffle]);
+  }, [tracks]);
+
+  const handleNextTrackRef = useRef(handleNextTrack);
+  handleNextTrackRef.current = handleNextTrack;
+
+  const handleSelectTrackRef = useRef(handleSelectTrack);
+  handleSelectTrackRef.current = handleSelectTrack;
+
+  const currentTimeRef = useRef(currentTime);
+  currentTimeRef.current = currentTime;
+  const durationRef = useRef(duration);
+  durationRef.current = duration;
 
   const handlePreviousTrack = () => {
     if (!currentTrack) return;
