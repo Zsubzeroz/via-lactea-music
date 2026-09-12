@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { ActiveTab, Track, Playlist } from './types';
 import { audioEngine } from './services/audioEngine';
-import { subscribeToTracks, TrackMetadata, getStoragePublicUrl } from './services/firebase';
+import { subscribeToTracks, TrackMetadata, getAudioUrl, getCoverUrl } from './services/firebase';
 import { getApiBase } from './config';
 import { getOfflineTracks, fetchAndSaveOfflineTrack, isTrackOffline, softDeleteOfflineTrack, removeOfflineTrack } from './services/offlineStore';
 import { Header } from './components/Header';
@@ -21,14 +21,11 @@ const AlbumsView = React.lazy(() =>
 
 function trackFromMeta(m: TrackMetadata): Track {
   const audioUrl = m.audioUrl
-    || (m.audioKey ? getStoragePublicUrl(`audio/${m.audioKey}`) : undefined);
+    || (m.audioKey ? getAudioUrl(m.audioKey) : undefined);
 
   let coverUrl = m.coverUrl;
-  if (coverUrl && !coverUrl.startsWith('http')) {
-    coverUrl = getStoragePublicUrl(coverUrl.replace(/^\/+/, ''));
-  }
-  if (!coverUrl && m.coverKey) {
-    coverUrl = getStoragePublicUrl(`covers/${m.coverKey}`);
+  if (!coverUrl && m.id) {
+    coverUrl = getCoverUrl(m.category, m.id);
   }
 
   return {

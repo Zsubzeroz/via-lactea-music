@@ -1,6 +1,5 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, doc, setDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { getApiBase } from '../config';
 
 const firebaseConfig = {
   apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY,
@@ -15,11 +14,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
-const STORAGE_BUCKET = firebaseConfig.storageBucket;
-const STORAGE_BASE = `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o`;
+export function getAudioUrl(audioKey: string): string {
+  return `/audio/${audioKey}`;
+}
 
-export function getStoragePublicUrl(storagePath: string): string {
-  return `${STORAGE_BASE}/${encodeURIComponent(storagePath)}?alt=media`;
+export function getCoverUrl(category: string, trackId: string): string {
+  return `/covers/${trackId}.jpg`;
 }
 
 export interface TrackMetadata {
@@ -54,5 +54,5 @@ export function subscribeToTracks(callback: (tracks: TrackMetadata[]) => void) {
 }
 
 export function getTrackDownloadUrl(audioKey: string): string {
-  return getStoragePublicUrl(`audio/${audioKey}`);
+  return `/audio/${audioKey}`;
 }
