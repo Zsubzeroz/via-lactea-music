@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Playlist } from '../types';
-import { FolderOpen, Plus, Pencil, Trash2, Music, X, Check, FolderPlus } from 'lucide-react';
+import { FolderOpen, Plus, Pencil, Trash2, Music, X, Check, FolderPlus, HardDrive, Trash } from 'lucide-react';
+import { getOfflineStorageUsage, clearAllOfflineTracks } from '../services/offlineStore';
 
 interface PlaylistsViewProps {
   playlists: Playlist[];
@@ -8,6 +9,7 @@ interface PlaylistsViewProps {
   onCreate: (name: string) => Promise<void>;
   onRename: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onClearedOffline?: () => void;
 }
 
 export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
@@ -16,6 +18,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   onCreate,
   onRename,
   onDelete,
+  onClearedOffline,
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -23,6 +26,12 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   const [editName, setEditName] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [offlineUsage, setOfflineUsage] = useState<{ usedMB: number; trackCount: number }>({ usedMB: 0, trackCount: 0 });
+  const [clearingOffline, setClearingOffline] = useState(false);
+
+  useEffect(() => {
+    getOfflineStorageUsage().then(setOfflineUsage).catch(() => {});
+  }, []);
 
   const handleCreate = async () => {
     if (!newName.trim() || loading) return;
@@ -211,6 +220,38 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Offline Storage Section */}
+      {offlineUsage.trackCount > 0 && (
+        <div className="bg-[#111113] border border-zinc-800 rounded-lg p-4">
+          <div className="flex items-center justify-between pb-3 border-b border-zinc-800 mb-3">
+            <div className="flex items-center gap-2">
+              <HardDrive className="w-4 h-4 text-[#00ff88]" />
+              <span className="text-xs font-mono font-semibold text-zinc-300">MÚSICAS OFFLINE</span>
+            </div>
+            <button
+              onClick={async () => {
+                if (clearingOffline) return;
+                setClearingOffline(true);
+                try {
+                  await clearAllOfflineTracks();
+                  setOfflineUsage({ usedMB: 0, trackCount: 0 });
+                  onClearedOffline?.();
+                } catch {}
+                setClearingOffline(false);
+              }}
+              className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-red-900/50 text-zinc-400 hover:text-red-300 text-[10px] font-mono flex items-center gap-1.5 transition-colors"
+            >
+              <Trash className="w-3 h-3" />
+              Limpar todas
+            </button>
+          </div>
+          <div className="flex items-center gap-4 text-xs font-mono text-zinc-400">
+            <span><strong className="text-zinc-200">{offlineUsage.trackCount}</strong> faixas</span>
+            <span><strong className="text-zinc-200">{offlineUsage.usedMB}</strong> MB usados</span>
+          </div>
         </div>
       )}
     </div>

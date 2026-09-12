@@ -41,15 +41,22 @@ export async function saveOfflineTrack(track: Track, audioBlob?: Blob): Promise<
     audioType: audioBlob?.type || null,
   };
 
-  const db = await openDatabase();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    const request = store.put(payload);
+  try {
+    const db = await openDatabase();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.put(payload);
 
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error || new Error('Failed to save track locally'));
-  });
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error || new Error('Failed to save track locally'));
+    });
+  } catch (err: any) {
+    if (err?.name === 'QuotaExceededError' || err?.message?.includes('quota')) {
+      throw new Error('Espaço insuficiente no dispositivo. Delete algumas músicas offline para liberar espaço.');
+    }
+    throw err;
+  }
 }
 
 export async function getOfflineTracks(): Promise<Track[]> {
@@ -142,5 +149,42 @@ export async function removeOfflineTrack(trackId: string): Promise<void> {
     const request = store.delete(trackId);
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error || new Error('Failed to remove track'));
+  });
+}
+
+export async function getOfflineStorageUsage(): Promise<{ usedMB: number; trackCount: number }> {
+  if (!('indexedDB' in window)) return { usedMB: 0, trackCount: 0 };
+
+  const db = await openDatabase();
+  const rows = await new Promise<any[]>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error || new Error('Failed to list offline tracks'));
+  });
+
+  let totalBytes = 0;
+  for (const row of rows) {
+    if (row.audioData instanceof ArrayBuffer) {
+      totalBytes += row.audioData.byteLength;
+    }
+  }
+
+  return {
+    usedMB: parseFloat((totalBytes / (1024 * 1024)).toFixed(1)),
+    trackCount: rows.filter((r) => !!r.audioData).length,
+  };
+}
+
+export async function clearAllOfflineTracks(): Promise<void> {
+  if (!('indexedDB' in window)) return;
+  const db = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.clear();
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error || new Error('Failed to clear offline tracks'));
   });
 }

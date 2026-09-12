@@ -210,6 +210,9 @@ export default function App() {
       },
       () => {
         handleNextTrackRef.current();
+      },
+      (error) => {
+        showToast(error);
       }
     );
   }, []);
@@ -575,6 +578,8 @@ export default function App() {
               onSelectTrack={handleSelectTrack}
               onPlayFromQueue={playFromQueue}
               onPlayPause={handlePlayPause}
+              onDownloadOffline={handleDownloadOffline}
+              offlineTrackIds={offlineTrackIds}
             />
           </Suspense>
         )}
@@ -590,6 +595,10 @@ export default function App() {
             onCreate={handleCreatePlaylist}
             onRename={handleRenamePlaylist}
             onDelete={handleDeletePlaylist}
+            onClearedOffline={() => {
+              setOfflineTrackIds(new Set());
+              showToast('Músicas offline removidas');
+            }}
           />
         )}
 

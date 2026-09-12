@@ -60,6 +60,7 @@ class AudioEngineService {
   private onTimeUpdateCallback?: (time: number, duration: number) => void;
   private onStateChangeCallback?: (isPlaying: boolean) => void;
   private onTrackEndedCallback?: () => void;
+  private onErrorCallback?: (error: string) => void;
 
   constructor() {
     // Initialized lazily on first user interaction
@@ -135,11 +136,13 @@ class AudioEngineService {
   public setCallbacks(
     onTimeUpdate: (time: number, duration: number) => void,
     onStateChange: (isPlaying: boolean) => void,
-    onTrackEnded: () => void
+    onTrackEnded: () => void,
+    onError?: (error: string) => void
   ) {
     this.onTimeUpdateCallback = onTimeUpdate;
     this.onStateChangeCallback = onStateChange;
     this.onTrackEndedCallback = onTrackEnded;
+    this.onErrorCallback = onError;
   }
 
   public async playTrack(track: Track, startFromSeconds = 0) {
@@ -168,6 +171,13 @@ class AudioEngineService {
           console.error('Audio play error:', err);
           this.isPlayingState = false;
           if (this.onStateChangeCallback) this.onStateChangeCallback(false);
+          if (this.onErrorCallback) {
+            if (!navigator.onLine) {
+              this.onErrorCallback('Sem conexão. Baixe a música para ouvir offline.');
+            } else {
+              this.onErrorCallback('Erro ao reproduzir. Tente baixar a música para ouvir offline.');
+            }
+          }
         });
       }
     } else {

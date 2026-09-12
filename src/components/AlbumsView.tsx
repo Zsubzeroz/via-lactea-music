@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Track } from '../types';
-import { Disc3, Play, Pause, Music } from 'lucide-react';
+import { Disc3, Play, Pause, Music, Download, Check } from 'lucide-react';
 
 interface AlbumsViewProps {
   tracks: Track[];
@@ -9,6 +9,8 @@ interface AlbumsViewProps {
   onSelectTrack: (track: Track) => void;
   onPlayFromQueue: (tracks: Track[], track: Track) => void;
   onPlayPause: () => void;
+  onDownloadOffline: (track: Track) => void;
+  offlineTrackIds: Set<string>;
 }
 
 interface AlbumGroup {
@@ -39,6 +41,8 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
   onSelectTrack,
   onPlayFromQueue,
   onPlayPause,
+  onDownloadOffline,
+  offlineTrackIds,
 }) => {
   const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null);
 
@@ -275,6 +279,21 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   <span className="text-[10px] font-mono text-zinc-500 shrink-0">
                     {Math.floor(track.duration / 60)}:{String(Math.floor(track.duration % 60)).padStart(2, '0')}
                   </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDownloadOffline(track); }}
+                    className={`w-7 h-7 rounded flex items-center justify-center shrink-0 transition-colors ${
+                      offlineTrackIds.has(track.id)
+                        ? 'text-[#00ff88]'
+                        : 'text-zinc-500 hover:text-[#00ff88] active:bg-zinc-800'
+                    }`}
+                    title={offlineTrackIds.has(track.id) ? 'Disponível offline' : 'Salvar offline'}
+                  >
+                    {offlineTrackIds.has(track.id) ? (
+                      <Check className="w-3.5 h-3.5" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                  </button>
                 </button>
               );
             })}
