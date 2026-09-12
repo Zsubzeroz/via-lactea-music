@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { ActiveTab, Track, Playlist } from './types';
 import { audioEngine } from './services/audioEngine';
-import { subscribeToTracks, TrackMetadata } from './services/firebase';
+import { subscribeToTracks, TrackMetadata, getStoragePublicUrl } from './services/firebase';
 import { getApiBase } from './config';
 import { getOfflineTracks, fetchAndSaveOfflineTrack, isTrackOffline, softDeleteOfflineTrack, removeOfflineTrack } from './services/offlineStore';
 import { Header } from './components/Header';
@@ -20,6 +20,17 @@ const AlbumsView = React.lazy(() =>
 );
 
 function trackFromMeta(m: TrackMetadata): Track {
+  const audioUrl = m.audioUrl
+    || (m.audioKey ? getStoragePublicUrl(`audio/${m.audioKey}`) : undefined);
+
+  let coverUrl = m.coverUrl;
+  if (coverUrl && !coverUrl.startsWith('http')) {
+    coverUrl = getStoragePublicUrl(coverUrl.replace(/^\/+/, ''));
+  }
+  if (!coverUrl && m.coverKey) {
+    coverUrl = getStoragePublicUrl(`covers/${m.coverKey}`);
+  }
+
   return {
     id: m.id,
     title: m.title,
@@ -27,13 +38,9 @@ function trackFromMeta(m: TrackMetadata): Track {
     album: m.album,
     category: m.category,
     duration: m.duration,
-    audioUrl: m.audioKey ? `${getApiBase()}/api/audio/${m.audioKey}` : undefined,
+    audioUrl,
     audioKey: m.audioKey,
-    coverUrl: m.coverUrl
-      ? `${getApiBase()}${m.coverUrl}`
-      : m.coverKey
-        ? `${getApiBase()}/api/covers/${m.coverKey}`
-        : undefined,
+    coverUrl,
     isSynthesized: false,
     bpm: 120,
     key: 'Custom',

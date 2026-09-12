@@ -1,5 +1,5 @@
 import { Track } from '../types';
-import { getApiBase } from '../config';
+import { getStoragePublicUrl } from './firebase';
 
 const DB_NAME = 'via-lactea-music';
 const STORE_NAME = 'tracks';
@@ -107,9 +107,9 @@ export async function isTrackOffline(trackId: string): Promise<boolean> {
 }
 
 export async function fetchAndSaveOfflineTrack(track: Track): Promise<string | null> {
-  if (!track.audioKey || !track.audioUrl) return null;
+  if (!track.audioKey) return null;
 
-  const url = `${getApiBase()}/api/audio/${track.audioKey}`;
+  const url = track.audioUrl || getStoragePublicUrl(`audio/${track.audioKey}`);
   const response = await fetch(url);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 

@@ -15,6 +15,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
+const STORAGE_BUCKET = firebaseConfig.storageBucket;
+const STORAGE_BASE = `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o`;
+
+export function getStoragePublicUrl(storagePath: string): string {
+  return `${STORAGE_BASE}/${encodeURIComponent(storagePath)}?alt=media`;
+}
+
 export interface TrackMetadata {
   id: string;
   title: string;
@@ -25,6 +32,7 @@ export interface TrackMetadata {
   format: 'OGG' | 'AAC' | 'MP3';
   sizeMB: number;
   audioKey?: string;
+  audioUrl?: string;
   coverKey?: string;
   coverUrl?: string;
   createdAt: string;
@@ -45,6 +53,6 @@ export function subscribeToTracks(callback: (tracks: TrackMetadata[]) => void) {
   });
 }
 
-export async function getTrackDownloadUrl(audioKey: string): Promise<string> {
-  return `${getApiBase()}/api/audio/${audioKey}`;
+export function getTrackDownloadUrl(audioKey: string): string {
+  return getStoragePublicUrl(`audio/${audioKey}`);
 }

@@ -7,12 +7,20 @@ import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { initFirebaseAdmin } from './src/services/firebaseAdmin';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
 
 dotenv.config();
+
+const STORAGE_BUCKET = 'via-lactea-music.firebasestorage.app';
+const STORAGE_BASE = `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o`;
+
+function getStoragePublicUrl(storagePath: string): string {
+  return `${STORAGE_BASE}/${encodeURIComponent(storagePath)}?alt=media`;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -239,6 +247,33 @@ app.post('/api/download', async (req, res) => {
       } catch { /* ignore cover download errors */ }
     }
 
+    // Upload audio + cover to Firebase Storage
+    const adminApp = initFirebaseAdmin();
+    const bucket = getStorage(adminApp).bucket();
+
+    const audioStoragePath = `audio/${catDir}/${audioPath}`;
+    const audioFullPath = path.join(trackDir, audioFile);
+    await bucket.upload(audioFullPath, {
+      destination: audioStoragePath,
+      contentType: 'audio/mpeg',
+      metadata: { cacheControl: 'public, max-age=31536000' },
+    });
+
+    let coverStorageUrl = '';
+    if (fs.existsSync(coverPath)) {
+      const coverStoragePath = `covers/${catDir}/${trackId}.jpg`;
+      await bucket.upload(coverPath, {
+        destination: coverStoragePath,
+        contentType: 'image/jpeg',
+        metadata: { cacheControl: 'public, max-age=31536000' },
+      });
+      coverStorageUrl = getStoragePublicUrl(coverStoragePath);
+    }
+
+    // Clean up local temp files
+    try { fs.rmSync(trackDir, { recursive: true, force: true }); } catch {}
+    try { if (fs.existsSync(coverPath)) fs.unlinkSync(coverPath); } catch {}
+
     // Save metadata to Firestore
     const trackData = {
       id: trackId,
@@ -252,13 +287,13 @@ app.post('/api/download', async (req, res) => {
       sampleRate: '44.1 kHz',
       sizeMB: Math.round(fileSizeMB * 10) / 10,
       audioKey: `${catDir}/${audioPath}`,
-      coverUrl: fs.existsSync(coverPath) ? `/api/covers/${catDir}/${trackId}.jpg` : '',
+      audioUrl: getStoragePublicUrl(audioStoragePath),
+      coverUrl: coverStorageUrl,
       createdAt: new Date().toISOString(),
       source: 'yt-dlp',
       sourceUrl: url,
     };
 
-    const adminApp = initFirebaseAdmin();
     const db = getFirestore(adminApp);
     await db.collection('tracks').doc(trackId).set(trackData);
 
@@ -376,7 +411,11 @@ app.patch('/api/playlists/:id', async (req, res) => {
       tracksSnap.docs.forEach((trackDoc) => {
         const trackData = trackDoc.data();
         const newAudioKey = trackData.audioKey?.replace(`${oldFolderName}/`, `${newFolderName}/`);
-        batch.update(trackDoc.ref, { category: name.trim(), audioKey: newAudioKey });
+        const updates: Record<string, any> = { category: name.trim(), audioKey: newAudioKey };
+        if (trackData.audioUrl && trackData.audioKey) {
+          updates.audioUrl = getStoragePublicUrl(`audio/${newAudioKey}`);
+        }
+        batch.update(trackDoc.ref, updates);
       });
       await batch.commit();
     }
@@ -441,20 +480,38 @@ app.delete('/api/tracks/:id', async (req, res) => {
 
     const data = docSnap.data()!;
 
-    // Delete audio file from disk
+    // Delete audio from Firebase Storage
+    if (data.audioKey) {
+      try {
+        const bucket = getStorage(adminApp).bucket();
+        await bucket.file(`audio/${data.audioKey}`).delete();
+      } catch (err: any) {
+        console.warn(`[Delete] Storage audio delete failed: ${err.message}`);
+      }
+    }
+
+    // Delete cover from Firebase Storage
+    if (data.audioKey) {
+      try {
+        const bucket = getStorage(adminApp).bucket();
+        const catDir = data.audioKey.split('/')[0];
+        await bucket.file(`covers/${catDir}/${id}.jpg`).delete();
+      } catch (err: any) {
+        console.warn(`[Delete] Storage cover delete failed: ${err.message}`);
+      }
+    }
+
+    // Delete local files (fallback for files not yet migrated)
     if (data.audioKey) {
       const audioPath = path.join(AUDIO_DIR, data.audioKey);
       if (fs.existsSync(audioPath)) {
         fs.unlinkSync(audioPath);
-        // Also remove parent directory if empty
         const parentDir = path.dirname(audioPath);
         if (fs.existsSync(parentDir) && fs.readdirSync(parentDir).length === 0) {
           fs.rmdirSync(parentDir);
         }
       }
     }
-
-    // Delete cover file from disk
     if (data.coverUrl) {
       const coverPath = path.join(COVERS_DIR, data.coverUrl.replace(/^\/api\/covers\//, ''));
       if (fs.existsSync(coverPath)) {
