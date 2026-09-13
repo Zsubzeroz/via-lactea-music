@@ -4,6 +4,7 @@ import { Download, X, Check, Loader2, AlertCircle, Music, Link as LinkIcon, Key,
 
 const TOKEN_KEY = 'via-lactea-github-token';
 const REPO_DISPATCH_URL = 'https://api.github.com/repos/Zsubzeroz/via-lactea-music/actions/workflows/download-track.yml/dispatches';
+const YOUTUBE_REGEX = /^https?:\/\/(www\.|m\.|music\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)/;
 
 interface DownloadModalProps {
   isOpen: boolean;
@@ -78,6 +79,10 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
   const handleDownload = async () => {
     if (!url.trim()) {
       setError('Cole uma URL válida');
+      return;
+    }
+    if (!YOUTUBE_REGEX.test(url.trim())) {
+      setError('Apenas URLs do YouTube são aceitas (youtube.com, youtu.be, m.youtube.com, music.youtube.com)');
       return;
     }
     if (!hasToken) {

@@ -53,9 +53,11 @@ jobs:
         run: bash scripts/deploy-hosting.sh
 
       - name: Commit and push changes
+        env:
+          COMMIT_CATEGORY: ${{ github.event.inputs.category }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add audio/ covers/
-          git commit -m "chore: add track ${{ github.event.inputs.category }} - $(date +%Y%m%d-%H%M)" || echo "No new files to commit"
+          git commit -m "chore: add track $COMMIT_CATEGORY - $(date +%Y%m%d-%H%M)" || echo "No new files to commit"
           git push
