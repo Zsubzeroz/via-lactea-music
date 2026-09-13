@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, X, Check, Loader2, AlertCircle, Music, Link as LinkIcon, Key, ExternalLink } from 'lucide-react';
+import { Download, X, Check, Loader2, AlertCircle, Music, Key, ExternalLink } from 'lucide-react';
 
 const TOKEN_KEY = 'via-lactea-github-token';
-const REPO_DISPATCH_URL = 'https://api.github.com/repos/Zsubzeroz/via-lactea-music/actions/workflows/download-track.yml/dispatches';
+const REPO_API = 'https://api.github.com/repos/Zsubzeroz/via-lactea-music';
+const REPO_DISPATCH_URL = `${REPO_API}/actions/workflows/download-track.yml/dispatches`;
 const YOUTUBE_REGEX = /^https?:\/\/(www\.|m\.|music\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)/;
+const POLL_INTERVAL = 10000;
+const MAX_POLL_ATTEMPTS = 30;
 
 interface DownloadModalProps {
   isOpen: boolean;
@@ -31,9 +34,10 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const urlInputRef = useRef<HTMLInputElement>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -42,11 +46,12 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
       setDownloading(false);
       setProgress('');
       setError(null);
-      setResult(null);
+      setSuccess(false);
       setShowTokenInput(false);
       setTokenDraft('');
       setTimeout(() => urlInputRef.current?.focus(), 100);
     }
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -73,6 +78,46 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
     setShowTokenInput(true);
   };
 
+  const startPolling = (dispatchedAt: number) => {
+    let attempts = 0;
+    pollRef.current = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch(
+          `${REPO_API}/actions/workflows/download-track.yml/runs?per_page=1&created=>=${new Date(dispatchedAt - 5000).toISOString()}`,
+          { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' } }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const run = data.workflow_runs?.[0];
+        if (!run) return;
+
+        if (run.status === 'completed') {
+          if (pollRef.current) clearInterval(pollRef.current);
+          if (run.conclusion === 'success') {
+            setSuccess(true);
+            setDownloading(false);
+            setProgress('');
+            onTrackDownloaded?.();
+          } else {
+            setError(`Workflow falhou (${run.conclusion}). Verifique os logs no GitHub Actions.`);
+            setDownloading(false);
+            setProgress('');
+          }
+        } else {
+          setProgress(`Processando e publicando na nuvem... (${run.status})`);
+        }
+      } catch {}
+
+      if (attempts >= MAX_POLL_ATTEMPTS) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        setProgress('Download disparado. Verifique o GitHub Actions para acompanhar.');
+        setDownloading(false);
+        onTrackDownloaded?.();
+      }
+    }, POLL_INTERVAL);
+  };
+
   const handleDownload = async () => {
     if (!url.trim()) {
       setError('Cole uma URL válida');
@@ -90,7 +135,7 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
 
     setDownloading(true);
     setError(null);
-    setResult(null);
+    setSuccess(false);
     setProgress('Disparando download via GitHub Actions...');
 
     try {
@@ -107,20 +152,25 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
       });
 
       if (res.status === 204) {
-        setResult(category);
-        onTrackDownloaded?.();
+        setProgress('Processando e publicando na nuvem...');
+        startPolling(Date.now());
       } else if (res.status === 401 || res.status === 403) {
         setError('Token inválido ou sem permissão. Gere um novo token com acesso ao repositório.');
         setShowTokenInput(true);
+        setDownloading(false);
+        setProgress('');
       } else if (res.status === 404) {
         setError('Workflow não encontrado. Verifique se o repositório está correto.');
+        setDownloading(false);
+        setProgress('');
       } else {
         const body = await res.text();
         setError(`Erro ${res.status}: ${body.slice(0, 120)}`);
+        setDownloading(false);
+        setProgress('');
       }
     } catch (err: any) {
       setError(err.message || 'Erro ao conectar com GitHub');
-    } finally {
       setDownloading(false);
       setProgress('');
     }
@@ -272,7 +322,7 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
           />
         </div>
 
-        {/* Downloading Status */}
+        {/* Processing status */}
         {downloading && (
           <div className="bg-[#0a0a0c] border border-zinc-800 rounded-lg p-4 flex flex-col gap-3">
             <div className="flex items-center gap-2">
@@ -286,18 +336,18 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
         )}
 
         {/* Success */}
-        {result && !downloading && (
+        {success && (
           <div className="bg-[#0a0a0c] border border-emerald-800/50 rounded-lg p-4 flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <Check className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs font-mono text-emerald-300 font-semibold">Download disparado!</span>
+              <span className="text-xs font-mono text-emerald-300 font-semibold">Download Concluído com Sucesso!</span>
             </div>
             <div className="flex items-center gap-3 p-2 rounded bg-zinc-900/60 border border-zinc-800">
               <Music className="w-8 h-8 text-zinc-600 shrink-0" />
               <div className="min-w-0">
-                <p className="text-xs font-mono text-zinc-200 truncate">A música será adicionada em ~2 minutos</p>
-                <p className="text-[10px] font-mono text-zinc-400 truncate">Categoria: {result}</p>
-                <p className="text-[10px] font-mono text-zinc-500 truncate mt-0.5">Atualize a página para ver a nova faixa</p>
+                <p className="text-xs font-mono text-zinc-200 truncate">Música publicada no Via Láctea</p>
+                <p className="text-[10px] font-mono text-zinc-400 truncate">Categoria: {category}</p>
+                <p className="text-[10px] font-mono text-[#00ff88] truncate mt-0.5">Atualize a página para ver a nova faixa</p>
               </div>
             </div>
           </div>
@@ -317,9 +367,9 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
             onClick={onClose}
             className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
           >
-            {result ? 'Fechar' : 'Cancelar'}
+            {success ? 'Fechar' : 'Cancelar'}
           </button>
-          {!result && !downloading && (
+          {!success && !downloading && (
             <button
               onClick={handleDownload}
               disabled={!url.trim() || !hasToken}
@@ -329,11 +379,11 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
               Baixar
             </button>
           )}
-          {result && (
+          {success && (
             <button
               onClick={() => {
                 setUrl('');
-                setResult(null);
+                setSuccess(false);
                 setError(null);
               }}
               className="px-3 py-1.5 rounded bg-[#00ff88] hover:bg-[#00ff88]/90 text-black font-semibold flex items-center gap-1.5"
