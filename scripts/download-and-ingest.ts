@@ -81,7 +81,7 @@ async function main() {
   console.log('📋 Fetching video info...');
   const infoResult = await execFileAsync('yt-dlp', buildYtdlpArgs([
     '--dump-json', '--no-playlist', url,
-  ]), { timeout: 60000 });
+  ]), { timeout: 120000 });
 
   const info = JSON.parse(infoResult.stdout);
   const title = info.title || 'Unknown';
@@ -104,7 +104,7 @@ async function main() {
     '-o', outputTemplate,
     '--no-overwrites',
     url,
-  ]), { timeout: 120000 });
+  ]), { timeout: 900000 });
 
   // Find the downloaded file
   const trackDir = path.join(outDir, trackId);
