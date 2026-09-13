@@ -1,5 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, doc, setDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
+import {
+  getFirestore, collection, doc, addDoc, updateDoc, deleteDoc,
+  getDocs, query, orderBy, onSnapshot, where,
+} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY,
@@ -14,13 +17,17 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
+// ── URL helpers ──────────────────────────────────────────────────────────────
+
 export function getAudioUrl(audioKey: string): string {
   return `/audio/${audioKey}`;
 }
 
-export function getCoverUrl(category: string, trackId: string): string {
+export function getCoverUrl(_category: string, trackId: string): string {
   return `/covers/${trackId}.jpg`;
 }
+
+// ── Track metadata ───────────────────────────────────────────────────────────
 
 export interface TrackMetadata {
   id: string;
@@ -39,12 +46,6 @@ export interface TrackMetadata {
   deletedAt?: string | null;
 }
 
-export async function listTracks(): Promise<TrackMetadata[]> {
-  const q = query(collection(db, 'tracks'), orderBy('createdAt', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => d.data() as TrackMetadata);
-}
-
 export function subscribeToTracks(callback: (tracks: TrackMetadata[]) => void) {
   const q = query(collection(db, 'tracks'), orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snapshot) => {
@@ -53,6 +54,58 @@ export function subscribeToTracks(callback: (tracks: TrackMetadata[]) => void) {
   });
 }
 
-export function getTrackDownloadUrl(audioKey: string): string {
-  return `/audio/${audioKey}`;
+export async function setTrackDeletedStatus(trackId: string, deletedAt: string | null) {
+  const ref = doc(db, 'tracks', trackId);
+  await updateDoc(ref, { deletedAt });
+}
+
+export async function permanentDeleteTrack(trackId: string) {
+  const ref = doc(db, 'tracks', trackId);
+  await deleteDoc(ref);
+}
+
+// ── Playlists ────────────────────────────────────────────────────────────────
+
+export interface PlaylistDoc {
+  id: string;
+  name: string;
+  folderName: string;
+  trackCount: number;
+  createdAt: string;
+}
+
+function sanitizeFolderName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9À-ú_-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+}
+
+export function subscribeToPlaylists(callback: (playlists: PlaylistDoc[]) => void) {
+  const q = query(collection(db, 'playlists'), orderBy('name', 'asc'));
+  return onSnapshot(q, (snapshot) => {
+    const playlists = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as PlaylistDoc));
+    callback(playlists);
+  });
+}
+
+export async function createPlaylist(name: string): Promise<PlaylistDoc> {
+  const folderName = sanitizeFolderName(name.trim());
+  const docRef = await addDoc(collection(db, 'playlists'), {
+    name: name.trim(),
+    folderName,
+    trackCount: 0,
+    createdAt: new Date().toISOString(),
+  });
+  return { id: docRef.id, name: name.trim(), folderName, trackCount: 0, createdAt: new Date().toISOString() };
+}
+
+export async function renamePlaylist(id: string, name: string): Promise<void> {
+  const ref = doc(db, 'playlists', id);
+  await updateDoc(ref, {
+    name: name.trim(),
+    folderName: sanitizeFolderName(name.trim()),
+  });
+}
+
+export async function deletePlaylist(id: string): Promise<void> {
+  const ref = doc(db, 'playlists', id);
+  await deleteDoc(ref);
 }

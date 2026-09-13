@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { ActiveTab, Track, Playlist } from './types';
 import { audioEngine } from './services/audioEngine';
-import { subscribeToTracks, TrackMetadata, getAudioUrl, getCoverUrl } from './services/firebase';
-import { getApiBase } from './config';
+import { subscribeToTracks, subscribeToPlaylists, createPlaylist, renamePlaylist, deletePlaylist, setTrackDeletedStatus, permanentDeleteTrack, TrackMetadata, getAudioUrl, getCoverUrl } from './services/firebase';
 import { getOfflineTracks, fetchAndSaveOfflineTrack, isTrackOffline, softDeleteOfflineTrack, removeOfflineTrack } from './services/offlineStore';
 import { Header } from './components/Header';
 import { PlayerBar } from './components/PlayerBar';
@@ -135,51 +134,30 @@ export default function App() {
     } catch {}
   }, []);
 
-  // Fetch playlists from server
+  // Subscribe to playlists from Firestore
   useEffect(() => {
-    fetch(`${getApiBase()}/api/playlists`)
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setPlaylists(data); })
-      .catch(() => {});
+    let active = true;
+    const unsub = subscribeToPlaylists((fbPlaylists) => {
+      if (active) setPlaylists(fbPlaylists);
+    });
+    return () => {
+      active = false;
+      unsub();
+    };
   }, []);
 
   const handleCreatePlaylist = async (name: string) => {
-    const res = await fetch(`${getApiBase()}/api/playlists`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error);
-    }
-    const data = await res.json();
-    setPlaylists((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+    await createPlaylist(name);
     showToast(`Playlist "${name}" criada!`);
   };
 
   const handleRenamePlaylist = async (id: string, name: string) => {
-    const res = await fetch(`${getApiBase()}/api/playlists/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error);
-    }
-    const data = await res.json();
-    setPlaylists((prev) => prev.map((p) => (p.id === id ? { ...p, name: data.name, folderName: data.folderName } : p)));
+    await renamePlaylist(id, name);
     showToast(`Playlist renomeada!`);
   };
 
   const handleDeletePlaylist = async (id: string) => {
-    const res = await fetch(`${getApiBase()}/api/playlists/${id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error);
-    }
-    setPlaylists((prev) => prev.filter((p) => p.id !== id));
+    await deletePlaylist(id);
     showToast(`Playlist excluída!`);
   };
 
@@ -377,15 +355,9 @@ export default function App() {
     setTracks((prev) =>
       prev.map((t) => (t.id === track.id ? { ...t, deletedAt } : t))
     );
-    if (track.audioKey) {
-      try {
-        await fetch(`${getApiBase()}/api/tracks/${track.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deletedAt }),
-        });
-      } catch { /* Firestore soft delete failed, local state updated */ }
-    }
+    try {
+      await setTrackDeletedStatus(track.id, deletedAt);
+    } catch { /* Firestore soft delete failed, local state updated */ }
     if (offlineTrackIds.has(track.id)) {
       await softDeleteOfflineTrack(track.id).catch(() => {});
     }
@@ -399,22 +371,16 @@ export default function App() {
     setTracks((prev) =>
       prev.map((t) => (t.id === track.id ? { ...t, deletedAt: null } : t))
     );
-    if (track.audioKey) {
-      try {
-        await fetch(`${getApiBase()}/api/tracks/${track.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deletedAt: null }),
-        });
-      } catch { /* Firestore restore failed */ }
-    }
+    try {
+      await setTrackDeletedStatus(track.id, null);
+    } catch { /* Firestore restore failed */ }
     showToast(`"${track.title}" restaurada!`);
   };
 
   const handlePermanentDelete = async (track: Track) => {
     try {
-      await fetch(`${getApiBase()}/api/tracks/${track.id}`, { method: 'DELETE' });
-    } catch { /* server delete failed */ }
+      await permanentDeleteTrack(track.id);
+    } catch { /* Firestore delete failed */ }
     if (offlineTrackIds.has(track.id)) {
       await removeOfflineTrack(track.id).catch(() => {});
       setOfflineTrackIds((prev) => {
@@ -427,8 +393,6 @@ export default function App() {
     if (currentTrackRef.current?.id === track.id) {
       handleNextTrackRef.current();
     }
-    setDeleteTarget(null);
-    showToast(`"${track.title}" excluída permanentemente`);
   };
 
   const trashCount = tracks.filter((t) => t.deletedAt).length;
