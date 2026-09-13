@@ -228,13 +228,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                       )}
                     </button>
 
-                    {track.coverUrl ? (
-                      <img src={track.coverUrl} alt="" className="w-9 h-9 rounded object-cover bg-zinc-800 shrink-0" />
-                    ) : (
-                      <div className="w-9 h-9 rounded bg-zinc-800 flex items-center justify-center shrink-0">
-                        <Music className="w-4 h-4 text-zinc-600" />
-                      </div>
-                    )}
+                    <div className="w-9 h-9 rounded bg-zinc-800 flex items-center justify-center shrink-0 relative overflow-hidden">
+                      {track.coverUrl ? (
+                        <img src={track.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      ) : null}
+                      <Music className="w-4 h-4 text-zinc-600" />
+                    </div>
 
                     <div className="min-w-0 flex-1">
                       <p className={`text-xs font-semibold truncate ${isCurrent ? 'text-white' : 'text-zinc-200'}`}>
@@ -319,13 +318,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                       )}
                     </button>
 
-                    {track.coverUrl ? (
-                      <img src={track.coverUrl} alt="" className="w-9 h-9 rounded object-cover bg-zinc-800 shrink-0" />
-                    ) : (
-                      <div className="w-9 h-9 rounded bg-zinc-800 flex items-center justify-center shrink-0">
-                        <Music className="w-4 h-4 text-zinc-600" />
-                      </div>
-                    )}
+                    <div className="w-9 h-9 rounded bg-zinc-800 flex items-center justify-center shrink-0 relative overflow-hidden">
+                      {track.coverUrl ? (
+                        <img src={track.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      ) : null}
+                      <Music className="w-4 h-4 text-zinc-600" />
+                    </div>
 
                     <div className="truncate">
                       <p className={`text-xs font-semibold truncate ${isCurrent ? 'text-white' : 'text-zinc-200'}`}>

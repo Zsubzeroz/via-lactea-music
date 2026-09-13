@@ -238,9 +238,7 @@ app.post('/api/download', async (req, res) => {
     const fileSizeMB = fs.statSync(path.join(trackDir, audioFile)).size / (1024 * 1024);
 
     // Download thumbnail as cover
-    const coverDir = path.join(COVERS_DIR, catDir);
-    if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
-    const coverPath = path.join(coverDir, `${trackId}.jpg`);
+    const coverPath = path.join(COVERS_DIR, `${trackId}.jpg`);
     if (thumbnail) {
       try {
         await execFileAsync('curl', ['-sL', '-o', coverPath, thumbnail], { timeout: 10000 });
@@ -261,7 +259,7 @@ app.post('/api/download', async (req, res) => {
 
     let coverStorageUrl = '';
     if (fs.existsSync(coverPath)) {
-      const coverStoragePath = `covers/${catDir}/${trackId}.jpg`;
+      const coverStoragePath = `covers/${trackId}.jpg`;
       await bucket.upload(coverPath, {
         destination: coverStoragePath,
         contentType: 'image/jpeg',

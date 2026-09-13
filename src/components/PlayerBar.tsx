@@ -115,10 +115,9 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
           <div className="w-9 h-9 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0 relative overflow-hidden">
             {currentTrack?.coverUrl ? (
-              <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <Music className={`w-5 h-5 ${isPlaying ? 'text-[#ff0055]' : 'text-zinc-500'}`} />
-            )}
+              <img src={currentTrack.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            ) : null}
+            <Music className={`w-5 h-5 ${isPlaying ? 'text-[#ff0055]' : 'text-zinc-500'}`} />
             {isPlaying && (
               <span className="absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[#00ff88]" />
             )}
@@ -205,10 +204,9 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         <div className="flex items-center gap-3 min-w-[220px] max-w-sm">
           <div className="w-11 h-11 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center relative overflow-hidden shrink-0">
             {currentTrack?.coverUrl ? (
-              <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <Music className={`w-6 h-6 ${isPlaying ? 'text-[#ff0055]' : 'text-zinc-500'}`} />
-            )}
+              <img src={currentTrack.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            ) : null}
+            <Music className={`w-6 h-6 ${isPlaying ? 'text-[#ff0055]' : 'text-zinc-500'}`} />
             {isPlaying && (
               <span className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-ping" />
             )}

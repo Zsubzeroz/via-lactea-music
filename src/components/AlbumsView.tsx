@@ -147,6 +147,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                               alt=""
                               className="w-full h-full object-cover rounded-md"
                               loading="lazy"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                             />
                           )}
                         </div>
@@ -166,6 +167,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                               alt=""
                               className="w-full h-full object-cover rounded-md"
                               loading="lazy"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                             />
                           )}
                         </div>
@@ -180,22 +182,22 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                           : 'border-zinc-700'
                       }`}
                     >
-                      {album.coverUrl ? (
+                      <div
+                        className="w-full h-full flex items-center justify-center"
+                        style={{ background: generatePlaceholderGradient(album.album) }}
+                      >
+                        <span className="text-3xl sm:text-4xl font-bold text-zinc-500/60">
+                          {getInitial(album.album)}
+                        </span>
+                      </div>
+                      {album.coverUrl && (
                         <img
                           src={album.coverUrl}
                           alt={album.album}
-                          className="w-full h-full object-cover"
+                          className="absolute inset-0 w-full h-full object-cover"
                           loading="lazy"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                         />
-                      ) : (
-                        <div
-                          className="w-full h-full flex items-center justify-center"
-                          style={{ background: generatePlaceholderGradient(album.album) }}
-                        >
-                          <span className="text-3xl sm:text-4xl font-bold text-zinc-500/60">
-                            {getInitial(album.album)}
-                          </span>
-                        </div>
                       )}
 
                       {/* Play overlay */}

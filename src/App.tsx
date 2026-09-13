@@ -12,7 +12,7 @@ import { UploadModal } from './components/UploadModal';
 import { DownloadModal } from './components/DownloadModal';
 import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
 import { PlaylistsView } from './components/PlaylistsView';
-import { Disc, Radio, ListMusic, Trash2 } from 'lucide-react';
+import { Disc, Radio, ListMusic, Trash2, Music } from 'lucide-react';
 
 const AlbumsView = React.lazy(() =>
   import('./components/AlbumsView').then((m) => ({ default: m.AlbumsView }))
@@ -70,6 +70,7 @@ export default function App() {
   const [queue, setQueue] = useState<Track[]>([]);
   const [queueIndex, setQueueIndex] = useState<number>(-1);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [coverImgError, setCoverImgError] = useState<boolean>(false);
 
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
@@ -133,6 +134,11 @@ export default function App() {
       }
     } catch {}
   }, []);
+
+  // Reset cover error when track changes
+  useEffect(() => {
+    setCoverImgError(false);
+  }, [currentTrack?.id]);
 
   // Subscribe to playlists from Firestore
   useEffect(() => {
@@ -441,10 +447,10 @@ export default function App() {
 
                 <div className="flex items-center gap-4 sm:gap-5">
                   <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-lg bg-[#0a0a0c] border border-zinc-800 flex items-center justify-center shrink-0 overflow-hidden relative">
-                    {currentTrack.coverUrl ? (
-                      <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
+                    {currentTrack.coverUrl && !coverImgError ? (
+                      <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" onError={() => setCoverImgError(true)} />
                     ) : (
-                      <Disc className={`w-12 h-12 sm:w-14 sm:h-14 text-zinc-600 transition-transform duration-1000 ${isPlaying ? 'rotate-[360deg] text-[#ff0055]' : ''}`} />
+                      <Music className={`w-10 h-10 sm:w-12 sm:h-12 text-zinc-600`} />
                     )}
                   </div>
 
@@ -585,13 +591,12 @@ export default function App() {
               <div className="bg-[#111113] border border-zinc-800 rounded-lg overflow-hidden divide-y divide-zinc-800/60">
                 {trashTracks.map((t) => (
                   <div key={t.id} className="px-4 py-3 hover:bg-zinc-800/40 transition-colors flex items-center gap-3">
-                    {t.coverUrl ? (
-                      <img src={t.coverUrl} alt="" className="w-10 h-10 rounded object-cover bg-zinc-800 shrink-0" />
-                    ) : (
-                      <div className="w-10 h-10 rounded bg-zinc-800 flex items-center justify-center shrink-0">
-                        <Disc className="w-5 h-5 text-zinc-600" />
-                      </div>
-                    )}
+                    <div className="w-10 h-10 rounded bg-zinc-800 flex items-center justify-center shrink-0 relative overflow-hidden">
+                      {t.coverUrl ? (
+                        <img src={t.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      ) : null}
+                      <Music className="w-5 h-5 text-zinc-600" />
+                    </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-zinc-200 truncate">{t.title}</p>
                       <p className="text-[10px] text-zinc-400 truncate">{t.artist}</p>
