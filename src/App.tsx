@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { ActiveTab, Track, Playlist } from './types';
 import { audioEngine } from './services/audioEngine';
-import { subscribeToTracks, subscribeToPlaylists, createPlaylist, renamePlaylist, deletePlaylist, setTrackDeletedStatus, permanentDeleteTrack, TrackMetadata, getAudioUrl, getCoverUrl } from './services/firebase';
+import { subscribeToTracks, subscribeToPlaylists, createPlaylist, renamePlaylist, deletePlaylist, setTrackDeletedStatus, permanentDeleteTrack, TrackMetadata, getAudioUrl } from './services/firebase';
 import { getOfflineTracks, fetchAndSaveOfflineTrack, isTrackOffline, softDeleteOfflineTrack, removeOfflineTrack } from './services/offlineStore';
 import { Header } from './components/Header';
 import { PlayerBar } from './components/PlayerBar';
@@ -22,10 +22,7 @@ function trackFromMeta(m: TrackMetadata): Track {
   const audioUrl = m.audioUrl
     || (m.audioKey ? getAudioUrl(m.audioKey) : undefined);
 
-  let coverUrl = m.coverUrl;
-  if (!coverUrl && m.id) {
-    coverUrl = getCoverUrl(m.category, m.id);
-  }
+  let coverUrl = `/covers/${m.id}.jpg`;
 
   return {
     id: m.id,
