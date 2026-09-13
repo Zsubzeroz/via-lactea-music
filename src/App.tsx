@@ -652,7 +652,6 @@ export default function App() {
         isOpen={isDownloadOpen}
         onClose={() => setIsDownloadOpen(false)}
         onTrackDownloaded={() => showToast('Música baixada! Atualizando biblioteca...')}
-        playlists={playlists}
       />
 
       <ConfirmDeleteModal

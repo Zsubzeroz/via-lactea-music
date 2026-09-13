@@ -21,6 +21,7 @@ const execFileAsync = promisify(execFile);
 const PROJECT_ROOT = path.resolve(process.cwd());
 const AUDIO_DIR = path.join(PROJECT_ROOT, 'audio');
 const COVERS_DIR = path.join(PROJECT_ROOT, 'covers');
+const COOKIES_PATH = path.join(PROJECT_ROOT, 'cookies.txt');
 
 function cleanYouTubeUrl(raw: string): string {
   try {
@@ -34,6 +35,20 @@ function cleanYouTubeUrl(raw: string): string {
     }
   } catch {}
   return raw;
+}
+
+function buildYtdlpArgs(extra: string[]): string[] {
+  const args = [
+    '--remote-components', 'ejs:github',
+    '--js-runtimes', 'node',
+    '--extractor-args', 'youtube:player_client=android,web',
+  ];
+  if (fs.existsSync(COOKIES_PATH)) {
+    args.push('--cookies', COOKIES_PATH);
+    console.log('🍪 Using cookies.txt for authenticated access');
+  }
+  args.push(...extra);
+  return args;
 }
 
 const rawUrl = process.argv[2] || process.env.TRACK_URL || '';
@@ -64,12 +79,9 @@ async function main() {
 
   // 1. Get video info
   console.log('📋 Fetching video info...');
-  const infoResult = await execFileAsync('yt-dlp', [
-    '--remote-components', 'ejs:github',
-    '--js-runtimes', 'node',
-    '--extractor-args', 'youtube:player_client=android,web',
+  const infoResult = await execFileAsync('yt-dlp', buildYtdlpArgs([
     '--dump-json', '--no-playlist', url,
-  ], { timeout: 60000 });
+  ]), { timeout: 60000 });
 
   const info = JSON.parse(infoResult.stdout);
   const title = info.title || 'Unknown';
@@ -85,17 +97,14 @@ async function main() {
   // 2. Download audio as MP3
   console.log('⬇️  Downloading audio...');
   const outputTemplate = path.join(outDir, `${trackId}/%(title)s.%(ext)s`);
-  await execFileAsync('yt-dlp', [
-    '--remote-components', 'ejs:github',
-    '--js-runtimes', 'node',
-    '--extractor-args', 'youtube:player_client=android,web',
+  await execFileAsync('yt-dlp', buildYtdlpArgs([
     '-x', '--audio-format', 'mp3',
     '--audio-quality', '320K',
     '--no-playlist',
     '-o', outputTemplate,
     '--no-overwrites',
     url,
-  ], { timeout: 120000 });
+  ]), { timeout: 120000 });
 
   // Find the downloaded file
   const trackDir = path.join(outDir, trackId);

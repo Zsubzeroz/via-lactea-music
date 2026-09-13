@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Playlist } from '../types';
 import { Download, X, Check, Loader2, AlertCircle, Music, Link as LinkIcon, Key, ExternalLink } from 'lucide-react';
 
 const TOKEN_KEY = 'via-lactea-github-token';
@@ -10,7 +9,6 @@ interface DownloadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTrackDownloaded?: () => void;
-  playlists?: Playlist[];
 }
 
 const CATEGORIES = [
@@ -23,7 +21,6 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
   isOpen,
   onClose,
   onTrackDownloaded,
-  playlists = [],
 }) => {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || '');
   const [showTokenInput, setShowTokenInput] = useState(false);
@@ -254,8 +251,8 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
             disabled={downloading}
             className="w-full bg-[#0a0a0c] border border-zinc-800 rounded p-2.5 text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
           >
-            {playlists.map((p) => (
-              <option key={p.id} value={p.name}>{p.name}</option>
+            {CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
         </div>
