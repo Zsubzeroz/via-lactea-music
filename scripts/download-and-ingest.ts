@@ -22,7 +22,22 @@ const PROJECT_ROOT = path.resolve(process.cwd());
 const AUDIO_DIR = path.join(PROJECT_ROOT, 'audio');
 const COVERS_DIR = path.join(PROJECT_ROOT, 'covers');
 
-const url = process.argv[2] || process.env.TRACK_URL || '';
+function cleanYouTubeUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
+      u.searchParams.delete('list');
+      u.searchParams.delete('start_radio');
+      u.searchParams.delete('si');
+      u.searchParams.delete('pp');
+      return u.toString();
+    }
+  } catch {}
+  return raw;
+}
+
+const rawUrl = process.argv[2] || process.env.TRACK_URL || '';
+const url = cleanYouTubeUrl(rawUrl);
 const category = process.argv[3] || process.env.TRACK_CATEGORY || 'Geral';
 
 if (!url) {
@@ -52,6 +67,7 @@ async function main() {
   const infoResult = await execFileAsync('yt-dlp', [
     '--remote-components', 'ejs:github',
     '--js-runtimes', 'node',
+    '--extractor-args', 'youtube:player_client=android,web',
     '--dump-json', '--no-playlist', url,
   ], { timeout: 60000 });
 
@@ -72,6 +88,7 @@ async function main() {
   await execFileAsync('yt-dlp', [
     '--remote-components', 'ejs:github',
     '--js-runtimes', 'node',
+    '--extractor-args', 'youtube:player_client=android,web',
     '-x', '--audio-format', 'mp3',
     '--audio-quality', '320K',
     '--no-playlist',

@@ -147,6 +147,7 @@ app.get('/api/search', async (req, res) => {
     const result = await execFileAsync('yt-dlp', [
       '--remote-components', 'ejs:github',
       '--js-runtimes', 'node',
+      '--extractor-args', 'youtube:player_client=android,web',
       `ytsearch8:${q}`,
       '--dump-json',
       '--no-playlist',
@@ -202,6 +203,7 @@ app.post('/api/download', async (req, res) => {
     const infoResult = await execFileAsync('yt-dlp', [
       '--remote-components', 'ejs:github',
       '--js-runtimes', 'node',
+      '--extractor-args', 'youtube:player_client=android,web',
       '--dump-json', '--no-playlist', url,
     ], { timeout: 60000 });
 
@@ -216,6 +218,7 @@ app.post('/api/download', async (req, res) => {
     await execFileAsync('yt-dlp', [
       '--remote-components', 'ejs:github',
       '--js-runtimes', 'node',
+      '--extractor-args', 'youtube:player_client=android,web',
       '-x', '--audio-format', 'mp3',
       '--audio-quality', '320K',
       '--no-playlist',
