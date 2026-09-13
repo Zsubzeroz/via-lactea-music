@@ -15,7 +15,6 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { initFirebaseAdmin } from '../src/services/firebaseAdmin';
 import { getFirestore } from 'firebase-admin/firestore';
-import { getStorage } from 'firebase-admin/storage';
 
 const execFileAsync = promisify(execFile);
 
@@ -111,28 +110,8 @@ async function main() {
     console.log('   No thumbnail available.\n');
   }
 
-  // 4. Upload to Firebase Storage + save to Firestore
-  console.log('☁️  Uploading to Firebase...');
+  // 4. Save to Firestore
   const adminApp = initFirebaseAdmin();
-  const bucket = getStorage(adminApp).bucket();
-
-  const audioStoragePath = `audio/${catDir}/${audioPath}`;
-  await bucket.upload(audioFullPath, {
-    destination: audioStoragePath,
-    contentType: 'audio/mpeg',
-    metadata: { cacheControl: 'public, max-age=31536000' },
-  });
-  console.log('   Audio uploaded to Storage.');
-
-  const coverStoragePath = `covers/${trackId}.jpg`;
-  if (fs.existsSync(coverPath)) {
-    await bucket.upload(coverPath, {
-      destination: coverStoragePath,
-      contentType: 'image/jpeg',
-      metadata: { cacheControl: 'public, max-age=31536000' },
-    });
-    console.log('   Cover uploaded to Storage.');
-  }
 
   // Build Firestore document
   const trackData = {
